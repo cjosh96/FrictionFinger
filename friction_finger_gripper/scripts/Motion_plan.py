@@ -14,6 +14,22 @@ from std_msgs.msg       import Float32
 from std_msgs.msg       import Int32
 from common_msgs_gl.msg import Motor_position
 
+import roslib
+roslib.load_manifest("rosparam")
+import rosparam
+
+
+paramlist  = rosparam.load_file('/home/gsathyanarayanan/finger_ws_backup/src/friction_finger_gripper/config/beg.yaml')
+
+for params, ns in paramlist:
+    rosparam.upload_params(ns,params)
+    a_left = params['a_left']
+    b_left = params['b_left']
+    a_right = params['a_right']
+    b_right = params['b_right']
+
+
+
 
 FINGER_END = 15
 FINGER_START = 0
@@ -24,20 +40,22 @@ OBJECT_SIZE= 2.0
 TH1_MAX= 2.485 #142.5 degrees
 TH2_MIN= 0.65 #37.5
 FINGER_WIDTH=1
-Block_orientation=0
+#Block_orientation=0
 Block_Position=[0,0]
 VISUAL_SERVOING_ENABLE=1
 VISUAL_SERVOING_TOLERANCE=1
 
+global Block_orientation 
+Block_orientation = 0
 
 def angle_conversion(angle, flag):
     angle = 180. * angle / np.pi
     # 0-> Left, 1-> Right
     print 'angle = ', angle
     if(flag == 1):
-        n_angle =  0.002535*angle+ 0.532
+        n_angle =  a_right*angle+ b_right
     else:
-        n_angle = -0.002844*angle + 1.110
+        n_angle = a_left*angle + b_left
     # print("n_angle = ", n_angle)
     return (n_angle)
 
@@ -49,11 +67,11 @@ def encoder_gripper_angle_conversion(enc,flag):
     #     theta=(enc-0.14021)/0.00389
     # return theta
     if(flag==1):
-        theta=(enc- 0.522)/0.002535
+        theta= (enc - b_right)/a_right
     else:
-        theta=-(enc-1.110)/0.002844
-    print 'theta = ', theta
+        theta= (enc - b_left)/a_left
     return theta
+
 
 
 def finger_to_cartesian(L,R,A,th):
@@ -66,7 +84,6 @@ def finger_to_cartesian(L,R,A,th):
     elif A=="l_plus" or A=="l_minus":
         x_square = PALM_WIDTH + (R - OBJECT_SIZE/2.0)* np.cos(th[1]) - (OBJECT_SIZE/2.0 + FINGER_WIDTH)* np.sin(th[1])
         y_square = (R - OBJECT_SIZE/2.0)* np.sin(th[1]) + (OBJECT_SIZE/2.0 + FINGER_WIDTH)* np.cos(th[1])
-
 
     return x_square,y_square
 
@@ -206,7 +223,7 @@ def Motion_planner():
     F1=Finger()
     list_of_lists=[]
     #with open('p.txt') as f:
-    with open('/home/gsathyanarayanan/finger_ws/src/Motion_planner/Test_results/Rotation_-90/data6.txt') as f:    
+    with open('/home/gsathyanarayanan/finger_ws_backup/src/Motion_planner/Test_results/data1.txt') as f:    
         for line in f:
     	   inner_list = [elt.strip() for elt in line.split(',')]
     	   list_of_lists.append(inner_list)

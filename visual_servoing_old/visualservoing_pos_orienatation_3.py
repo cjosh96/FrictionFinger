@@ -15,16 +15,12 @@ from common_msgs_gl.srv import *
 from std_msgs.msg       import Float32
 from common_msgs_gl.msg import Motor_position
 
-import roslib
-roslib.load_manifest("rosparam")
-import rosparam
-
-
 TOLERANCE=0.3
 MAX_ITERATIONS=40
 JACOBIAN_STEPS=1
 
-paramlist = rosparam.load_file('/home/gsathyanarayanan/finger_ws_backup/src/friction_finger_gripper/config/beg.yaml')
+
+[params, ns] = rosparam.load_file('/home/gsathyanarayanan/finger_ws_backup/src/friction_finger_gripper/config/beg.yaml')
 for params, ns in paramlist:
     rosparam.upload_params(ns,params)
     a_left = params['a_left']

@@ -10,12 +10,30 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
+import roslib
+roslib.load_manifest("rosparam")
+import rosparam
+
+
+paramlist = rosparam.load_file('/home/gsathyanarayanan/finger_ws_backup/src/friction_finger_gripper/config/beg.yaml')
+for params, ns in paramlist:
+    rosparam.upload_params(ns,params)
+    start_x = params['start_x']
+    start_y = params['start_y']
+    end_x = params['end_x']
+    end_y = params['end_y']
+    a_x = params['a_x']
+    b_x = params['b_x']
+    a_y = params['a_y']
+    b_y = params['b_y']
+
+
 
 bridge = CvBridge()
 X = []
 Y = []
-start=[0.0288,0.0580]
-end=[0.0246, 0.0867]
+start=[start_x, start_y]
+end=[end_x, end_y]
 #end=[-0.0244, 0.07125]
 #end=[0.0724, 0.07125]
 #end = [0.0275, 0.10947]
@@ -71,8 +89,8 @@ class trajectory:
         cv2.waitKey(3)
 
     def XY_to_pixel_conversion(self,x,y):
-        x = int(x * 29.384269*100 + 603)
-        y = int(-y * 27.216781*100  +  560)
+        x = int(x * a_x + b_x)
+        y = int(y * a_y  +  b_y)
         return x,y
 
     def callback_position(self, msg):
@@ -161,6 +179,7 @@ def listener():
 
 
 def main():
+    
     global X, Y
     rospy.init_node('Image', anonymous=True)
     t = trajectory()
