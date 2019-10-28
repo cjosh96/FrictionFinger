@@ -27,7 +27,8 @@ for params, ns in paramlist:
     b_left = params['b_left']
     a_right = params['a_right']
     b_right = params['b_right']
-
+    hold_pos_left = params['hold_left']
+    hold_pos_right = params['hold_right']
 
 
 
@@ -61,11 +62,7 @@ def angle_conversion(angle, flag):
 
 
 def encoder_gripper_angle_conversion(enc,flag):
-    # if(flag==1):
-    #     theta=-(enc-1.03396)/0.0029
-    # else:
-    #     theta=(enc-0.14021)/0.00389
-    # return theta
+
     if(flag==1):
         theta= (enc - b_right)/a_right
     else:
@@ -87,6 +84,14 @@ def finger_to_cartesian(L,R,A,th):
 
     return x_square,y_square
 
+def hold_object(p1, p2):
+    rospy.wait_for_service('Hold_object')
+    try:
+        hold = rospy.ServiceProxy('Hold_object', Holdcommand)
+        resp1 = hold_object(p1, p2)
+    except rospy.ServiceException, e:
+        print ("Service call failed: %s"%e)
+    
 
 def slide_left_finger_down(p):
     # Call Left_Slide_Down(till left most position) Assume t1 = pi/6
@@ -477,7 +482,9 @@ def Motion_planner():
 
 
 if __name__ == '__main__':
+    print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     rospy.init_node('Control_loop')
+    hold_object(hold_pos_left, hold_pos_right)
     Motion_planner()
     rospy.spin()
 

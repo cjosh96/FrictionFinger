@@ -3,6 +3,10 @@ start_y: 0.0580
 end_x: 0.025
 end_y: 0.10
 
+# Method
+motion_planner: "Motion_plan.py"
+visual_servoing: "0"
+
 # Visual servo Controller gain
 Kp: 0.03
 
@@ -17,3 +21,6 @@ a_left: -0.002844
 b_left: 1.0542
 a_right: 0.002535
 b_right: 0.55672
+
+hold_left: 0.70
+hold_right: 0.70

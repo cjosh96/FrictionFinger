@@ -1,12 +1,23 @@
 <launch>
+	<arg name="vs_enable" default= "1"/>
+	
+	<rosparam command="load" file="/home/gsathyanarayanan/finger_ws_backup/src/friction_finger_gripper/config/beg.yaml"/>
+	<param name="visual_servoing" value="$(arg vs_enable)" />
+	
 	
 	<node pkg="friction_finger_gripper" type="controller_node" name="controller_node" output="screen"/>
 	<node pkg="friction_finger_gripper" type="high_level_controller_node" name="high_level_controller_node"/>
 	<node pkg="rosserial_python" type="serial_node.py" name="serial_node"/>
-	<node pkg="friction_finger_gripper" type="Motion_plan.py" name="Motion_plan" output="screen"/>
+	<node pkg="friction_finger_gripper" type="motion_planner" name="Motion_plan" output="screen"/>
+	
 	<include file="/opt/ros/kinetic/share/usb_cam/launch/usb_cam-test.launch"/>
 	<include file="/opt/ros/kinetic/share/aruco_ros/launch/double.launch"/>
+
 	<node pkg="object_position_tracking" type="object_position_tracking_node" name="object_position_tracking_node"/>
-	<node pkg="visual_servoing" type="visualservoing_pos_orienatation_3.py" name="visualservoing_pos_orienatation_3" output="screen"/>
+	
+	<group if="$(eval arg('vs_enable') == 1)">
+		<node pkg="visual_servoing" type="visualservoing_pos_orienatation_3.py" name="visualservoing_pos_orienatation_3" output="screen"/>
+	</group>
+	
 	<node pkg="friction_finger_gripper" type="Plot_trajectory.py" name="Plot_trajectory" output="screen"/>
 </launch>
