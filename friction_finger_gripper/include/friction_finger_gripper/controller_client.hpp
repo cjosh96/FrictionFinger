@@ -43,7 +43,8 @@ bool set_actuator_modes(ros::NodeHandle n,int size, int modes[])
     		values[i]=modes[i];
    	}
    	srv.request.data ={values[0],values[1]};//Need to make this dynamic
-   	if(client_operating_mode.call(srv))
+		 	
+	if(client_operating_mode.call(srv))
    	{
      		ROS_INFO("Set_operating_mode_Success");
      		return 1;
@@ -108,7 +109,7 @@ bool set_friction_left(ros::NodeHandle n,bool friction_surface)
     	if(1)
     	{
      		client_torque.call(srv);
-     		//ros::Duration(0.5).sleep();
+     		ros::Duration(0.5).sleep();
      		ROS_INFO("Friction_surface_set_Success");
      		return 1;
     	}
@@ -126,10 +127,10 @@ bool set_friction_right(ros::NodeHandle n,bool friction_surface)
     	common_msgs_gl::SendBool srv;
     	srv.request.data =friction_surface;
     	//if(client_torque.call(srv))
-      if(1)
+      	if(1)
     	{
      		client_torque.call(srv);
-     		//ros::Duration(0.5).sleep();
+     		ros::Duration(0.5).sleep();
      		ROS_INFO("Friction_surface_set_Success");
      		return 1;
     	}
@@ -159,7 +160,7 @@ bool hold_object(ros::NodeHandle n,float position_left,float position_right)
     	}
 }
 
-bool slide_right_up(ros::NodeHandle n, float position)
+bool slide_right_up(ros::NodeHandle n, float position, int switch_surface)
 {
    
    	// To Hold the object 
@@ -169,13 +170,16 @@ bool slide_right_up(ros::NodeHandle n, float position)
    	int modes[]={3,0};
    	set_modes=set_actuator_modes(n,2,modes);
    
-   	// Setting Friction Surface [Right -Low, Right- High]
-   	set_friction_l = set_friction_right(n,true);
-   	set_friction_r = set_friction_left(n,false);
-    	ros::Duration(1).sleep();
-  	//XXX: sleep deactivated for speed testing
-   	//ros::Duration(1).sleep();
-   
+	if (switch_surface == 1)
+	{   	
+		// Setting Friction Surface [Right -Low, Right- High]
+   		set_friction_l = set_friction_right(n,true);
+   		set_friction_r = set_friction_left(n,false);
+    		ros::Duration(1).sleep();
+  		//XXX: sleep deactivated for speed testing
+   		//ros::Duration(1).sleep();
+   	}
+
    	// Execute the slide right up functionality
    	//if(set_friction_l && set_friction_r)
    	if(1) 
@@ -220,7 +224,7 @@ bool slide_right_up(ros::NodeHandle n, float position)
     	}
 }
 
-bool slide_right_down(ros::NodeHandle n, float position)
+bool slide_right_down(ros::NodeHandle n, float position, int switch_surface)
 {
    
 	// To Hold the object 
@@ -229,11 +233,13 @@ bool slide_right_down(ros::NodeHandle n, float position)
 	// Setting modes [Left -Torque, Right- Position]
 	int modes[]={0,3};
 	set_modes=set_actuator_modes(n,2,modes);
-   
-	// Setting Friction Surface [Right -Low, Right- High]
-	set_friction_l = set_friction_right(n,true);
-	set_friction_r = set_friction_left(n,false);
-	ros::Duration(1).sleep();
+   	if (switch_surface == 1)
+	{
+		// Setting Friction Surface [Right -Low, Right- High]
+		set_friction_l = set_friction_right(n,true);
+		set_friction_r = set_friction_left(n,false);
+		ros::Duration(1).sleep();
+	}	
 	//XXX: sleep deactivated for speed testing
 	//ros::Duration(1).sleep();
    
@@ -280,7 +286,7 @@ bool slide_right_down(ros::NodeHandle n, float position)
     	}
 }
 
-bool slide_left_down(ros::NodeHandle n, float position)
+bool slide_left_down(ros::NodeHandle n, float position, int switch_surface)
 {
    
   	// To Hold the object 
@@ -289,12 +295,14 @@ bool slide_left_down(ros::NodeHandle n, float position)
    	// Setting modes [Left -Position, Right- Torque]
    	int modes[]={3,0};
    	set_modes=set_actuator_modes(n,2,modes);
-   
-   	// Setting Friction Surface [Right -High, Right- Low]
-   	set_friction_l = set_friction_right(n,false);
-   	set_friction_r = set_friction_left(n,true);
-   	ros::Duration(1).sleep();
-  	//XXX: sleep deactivated for speed testing
+   	if (switch_surface == 1)
+	{   	
+		// Setting Friction Surface [Right -High, Right- Low]
+   		set_friction_l = set_friction_right(n,false);
+   		set_friction_r = set_friction_left(n,true);
+   		ros::Duration(1).sleep();
+	}  	
+	//XXX: sleep deactivated for speed testing
    	//ros::Duration(1).sleep();
    
    	// Execute the slide left down functionality
@@ -339,7 +347,7 @@ bool slide_left_down(ros::NodeHandle n, float position)
 }
 
 
-bool slide_left_up(ros::NodeHandle n, float position)
+bool slide_left_up(ros::NodeHandle n, float position, int switch_surface)
 {
    
    	// To Hold the object 
@@ -348,12 +356,15 @@ bool slide_left_up(ros::NodeHandle n, float position)
    	// Setting modes [Left -Torque, Right- Position]
    	int modes[]={0,3};
    	set_modes=set_actuator_modes(n,2,modes);
-   
-   	// Setting Friction Surface [Right -High, Right- Low]
-   	set_friction_l = set_friction_right(n,false);
-   	set_friction_r = set_friction_left(n,true);
-   	ros::Duration(0.25).sleep();
-  	//XXX: sleep deactivated for speed testing
+   	
+	if (switch_surface == 1)
+	{   	
+		// Setting Friction Surface [Right -High, Right- Low]
+   		set_friction_l = set_friction_right(n,false);
+   		set_friction_r = set_friction_left(n,true);
+   		ros::Duration(0.25).sleep();
+	}  	
+	//XXX: sleep deactivated for speed testing
   	// ros::Duration(1).sleep();
    
    	// Execute the slide left up functionality
@@ -402,7 +413,7 @@ bool slide_left_up(ros::NodeHandle n, float position)
 
 
 
-bool rotate_clockwise(ros::NodeHandle n,float position)
+bool rotate_clockwise(ros::NodeHandle n,float position, int switch_surface)
 {
    	// To Hold the object 
    	//send_pos=hold_object(n,0.52,0.84);
@@ -411,13 +422,15 @@ bool rotate_clockwise(ros::NodeHandle n,float position)
    	int modes[]={3,0};
    	set_modes=set_actuator_modes(n,2,modes);
 
-  	// Setting Friction Surface [Right -High, Right- High]
-   	set_friction_l = set_friction_left(n,true);
-   	set_friction_r = set_friction_right(n,true);
-
+	if (switch_surface == 1)  	
+	{
+		// Setting Friction Surface [Right -High, Right- High]
+	   	set_friction_l = set_friction_left(n,true);
+   		set_friction_r = set_friction_right(n,true);
+	}
   	//XXX: sleep deactivated for speed testing
   	// ros::Duration(1).sleep();
-   
+   	
   	// Execute the Rotate clockwise functionality
    	if(set_friction_l && set_friction_r)
    	{
@@ -456,7 +469,7 @@ bool rotate_clockwise(ros::NodeHandle n,float position)
 }
 
 // Need to change this function to get two arguments as input [start,end]
-bool rotate_anticlockwise(ros::NodeHandle n,float position)
+bool rotate_anticlockwise(ros::NodeHandle n,float position, int switch_surface)
 {
    	// To Hold the object 
    	//send_pos=hold_object(n,0.52,0.84);
@@ -465,9 +478,12 @@ bool rotate_anticlockwise(ros::NodeHandle n,float position)
    	int modes[]={0,3};
    	set_modes=set_actuator_modes(n,2,modes);
 
- 	// Setting Friction Surface [Right -High, Right- High]
-   	set_friction_l = set_friction_left(n,true);
-   	set_friction_r = set_friction_right(n,true);
+	if (switch_surface == 1) 	
+	{
+		// Setting Friction Surface [Right -High, Right- High]   	
+		set_friction_l = set_friction_left(n,true);
+	   	set_friction_r = set_friction_right(n,true);
+	}
 
   	//XXX: sleep deactivated for speed testing
    	//ros::Duration(1).sleep();

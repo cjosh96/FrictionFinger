@@ -4,8 +4,8 @@ end_x: 0.025
 end_y: 0.10
 
 # Method
-motion_planner: "Motion_plan.py"
-visual_servoing: "0"
+motion_planner: 1
+visual_servoing: 1
 
 # Visual servo Controller gain
 Kp: 0.03
@@ -17,10 +17,10 @@ a_y: -2721.6781
 b_y: 560
 
 # Motor values to finger angles
-a_left: -0.002844
-b_left: 1.0542
-a_right: 0.002535
-b_right: 0.55672
+a_left: -0.002463
+b_left: 1.04474
+a_right: 0.002273
+b_right: 0.561364
 
-hold_left: 0.70
+hold_left: 0.80
 hold_right: 0.70

@@ -29,6 +29,7 @@ for params, ns in paramlist:
     b_right = params['b_right']
     hold_pos_left = params['hold_left']
     hold_pos_right = params['hold_right']
+    VISUAL_SERVOING_ENABLE = params['visual_servoing']
 
 
 
@@ -88,7 +89,7 @@ def hold_object(p1, p2):
     rospy.wait_for_service('Hold_object')
     try:
         hold = rospy.ServiceProxy('Hold_object', Holdcommand)
-        resp1 = hold_object(p1, p2)
+        resp1 = hold(p1, p2)
     except rospy.ServiceException, e:
         print ("Service call failed: %s"%e)
     
@@ -225,6 +226,7 @@ class Finger:
 def Motion_planner():
     global VISUAL_SERVOING_ENABLE
     global VISUAL_SERVOING_TOLERANCE
+    print "@@@@@@@@@@@@@@@@@@@@@@@@@"
     F1=Finger()
     list_of_lists=[]
     #with open('p.txt') as f:

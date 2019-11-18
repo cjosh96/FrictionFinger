@@ -1,53 +1,54 @@
 #include <friction_finger_gripper/controller_client.hpp>
 #include <friction_finger_gripper/PositionCommand.h>
 #include <friction_finger_gripper/Holdcommand.h>
+#include <friction_finger_gripper/ActionCommand.h>
 
 
-bool slide_right_finger_up(friction_finger_gripper::PositionCommand::Request &req,
-                    friction_finger_gripper::PositionCommand::Response &res)
+bool slide_right_finger_up(friction_finger_gripper::ActionCommand::Request &req,
+                    friction_finger_gripper::ActionCommand::Response &res)
 {
   ros::NodeHandle n1;
-  res.success = slide_right_up(n1,req.data);
+  res.success = slide_right_up(n1,req.position, req.switch_surface);
   return true;
 }
 
-bool slide_right_finger_down(friction_finger_gripper::PositionCommand::Request &req,
-                    friction_finger_gripper::PositionCommand::Response &res)
+bool slide_right_finger_down(friction_finger_gripper::ActionCommand::Request &req,
+                    friction_finger_gripper::ActionCommand::Response &res)
 {
   ros::NodeHandle n1;
-  res.success = slide_right_down(n1,req.data);
+  res.success = slide_right_down(n1,req.position, req.switch_surface);
   return true;
 }
 
-bool slide_left_finger_up(friction_finger_gripper::PositionCommand::Request &req,
-                    friction_finger_gripper::PositionCommand::Response &res)
+bool slide_left_finger_up(friction_finger_gripper::ActionCommand::Request &req,
+                    friction_finger_gripper::ActionCommand::Response &res)
 {
   ros::NodeHandle n1;
-  res.success = slide_left_up(n1,req.data);
+  res.success = slide_left_up(n1,req.position, req.switch_surface);
   return true;
 }
 
-bool slide_left_finger_down(friction_finger_gripper::PositionCommand::Request &req,
-                    friction_finger_gripper::PositionCommand::Response &res)
+bool slide_left_finger_down(friction_finger_gripper::ActionCommand::Request &req,
+                    friction_finger_gripper::ActionCommand::Response &res)
 {
   ros::NodeHandle n1;
-  res.success = slide_left_down(n1,req.data);
+  res.success = slide_left_down(n1,req.position, req.switch_surface);
   return true;
 }
 
-bool rotate_clock(friction_finger_gripper::PositionCommand::Request &req,
-                    friction_finger_gripper::PositionCommand::Response &res)
+bool rotate_clock(friction_finger_gripper::ActionCommand::Request &req,
+                    friction_finger_gripper::ActionCommand::Response &res)
 {
   ros::NodeHandle n1;
-  res.success = rotate_clockwise(n1,req.data);
+  res.success = rotate_clockwise(n1,req.position, req.switch_surface);
   return true;
 }
 
-bool rotate_anticlock(friction_finger_gripper::PositionCommand::Request &req,
-                    friction_finger_gripper::PositionCommand::Response &res)
+bool rotate_anticlock(friction_finger_gripper::ActionCommand::Request &req,
+                    friction_finger_gripper::ActionCommand::Response &res)
 {
   ros::NodeHandle n1;
-  res.success = rotate_anticlockwise(n1,req.data);
+  res.success = rotate_anticlockwise(n1,req.position, req.switch_surface);
   return true;
 }
 

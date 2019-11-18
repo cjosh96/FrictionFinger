@@ -25,6 +25,7 @@ MAX_ITERATIONS=40
 JACOBIAN_STEPS=1
 
 paramlist = rosparam.load_file('/home/gsathyanarayanan/finger_ws_backup/src/friction_finger_gripper/config/beg.yaml')
+
 for params, ns in paramlist:
     rosparam.upload_params(ns,params)
     a_left = params['a_left']
@@ -47,6 +48,7 @@ def angle_conversion(angle, flag):
     else:
         n_angle = a_left*angle + b_left
 
+    print 'motor value = ', n_angle
     return (n_angle)
 
 
@@ -66,9 +68,7 @@ def slide_left_finger_down(p):
 
     try:
         slide_left_down = rospy.ServiceProxy('Slide_Left_Finger_Down', PositionCommand)
-        print 'step 2', time.time()-start_time
         resp1 = slide_left_down(p)
-        print 'step 3', time.time()-start_time
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
 
@@ -79,9 +79,7 @@ def slide_left_finger_up(p):
     
     try:
         slide_left_up = rospy.ServiceProxy('Slide_Left_Finger_Up', PositionCommand)
-        print 'step 2', time.time()-start_time
         resp1 = slide_left_up(p)
-        print 'step 3', time.time()-start_time
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
 
@@ -92,9 +90,7 @@ def slide_right_finger_down(p):
     
     try:
         slide_right_down = rospy.ServiceProxy('Slide_Right_Finger_Down', PositionCommand)
-        print 'step 2', time.time()-start_time
         resp1 = slide_right_down(p)
-        print 'step 3', time.time()-start_time
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
 
@@ -105,9 +101,7 @@ def slide_right_finger_up(p):
     
     try:
         slide_right_up = rospy.ServiceProxy('Slide_Right_Finger_Up', PositionCommand)
-        print 'step 2', time.time()-start_time
         resp1 = slide_right_up(p)
-        print 'step 3', time.time()-start_time
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
 
@@ -230,15 +224,17 @@ class visual_servoing:
         # print 't1 = ', self.t1
         # Calculate theta1, d1
         d1v = np.array([self.d1 * np.cos(self.t1), self.d1 * np.sin(self.t1)])
-        w0v = np.array([self.w0 * np.sin(self.t1), self.w0 * np.cos(self.t1)])
+        w0v = np.array([self.w0 * np.sin(self.t1), -self.w0 * np.cos(self.t1)])
         wpv = np.array([self.wp, 0.])
-        f2v = np.array([self.fw * np.sin(self.t1), self.fw * np.cos(self.t1)])
+        f2v = np.array([self.fw * np.sin(self.t1), -self.fw * np.cos(self.t1)])
         av = d1v + w0v + f2v - wpv
         self.d2 = np.sqrt(float((av * av).sum() - self.fw * self.fw))
         self.t2 = np.arctan2(float(av[1]), float(av[0])) - np.arctan2(self.fw, self.d2)
 
-    #################### Solving using Inverse kinematics using Symbolic Variables ####################################
     '''
+
+    #################### Solving using Inverse kinematics using Symbolic Variables ####################################
+    
     def ik_leftFinger(self):
         t2_sol, d2_sol = symbols('t2_sol d2_sol')
         eqn1 = (d2_sol + self.w0 / 2.) * cos(t2_sol) - (self.fw + self.w0 / 2.) * sin(t2_sol)
@@ -308,13 +304,17 @@ class visual_servoing:
         return eqn1
     
 
-    def ik_leftFinger(self):
+    def ik_leftFinger_n(self):
 
         initial_guess_t1 = np.pi/3
         solution_t2 = opt.fsolve(self.solve_left, initial_guess_t1)
 
-        solt2 = solution_t2[0]
-        self.t2 = float(solt2)
+        for i in range(1,5):
+            initial_guess_t1 = np.pi * i / 5
+            solution = opt.fsolve(self.solve_left, initial_guess_t1, full_output=True)
+            if solution[2]==1 and solution[0] > 0 and solution[0] < np.pi:
+                solt2 = solution_t2[0]
+                self.t2 = float(solt2)
 
         d2v = np.array([self.d2 * np.cos(np.float64(self.t2)), self.d2 * np.sin(np.float64(self.t2))])
         w0v = np.array([self.w0 * np.sin(np.float64(self.t2)), -self.w0 * np.cos(np.float64(self.t2))])
@@ -324,6 +324,8 @@ class visual_servoing:
         self.d1 = np.sqrt(float(abs((av * av).sum() - self.fw * self.fw)))
         self.t1 = np.arctan2(float(av[1]), float(av[0])) + np.arctan2(self.fw, self.d1)
 
+        print 't1 = ', self.t1
+        print 't2 = ', self.t2
 
 
     ##### INVERSE KINEMATICS FOR SLIDING ALONG THE RIGHT FINGER #####
@@ -354,12 +356,18 @@ class visual_servoing:
         
         return eqn1
     
-    def ik_rightFinger(self):
+    def ik_rightFinger_n(self):
     
         initial_guess_t1 = np.pi/3
         
+        
         solution_t1 = opt.fsolve(self.right_equations_theta, initial_guess_t1, xtol= 1e-5)
-        self.t1 = float(solution_t1[0])
+        
+        for i in range(1,5):
+            initial_guess_t1 = np.pi * i / 5
+            solution = opt.fsolve(self.solve_left, initial_guess_t1, full_output=True)
+            if solution[2]==1 and solution[0] > 0 and solution[0] < np.pi:
+                self.t1 = float(solution_t1[0])
         
         d1v = np.array([self.d1 * np.cos(self.t1), self.d1 * np.sin(self.t1)])
         w0v = np.array([self.w0 * np.sin(self.t1), self.w0 * np.cos(self.t1)])
@@ -369,7 +377,8 @@ class visual_servoing:
         self.d2 = np.sqrt(float((av * av).sum() - self.fw * self.fw))
         self.t2 = np.arctan2(float(av[1]), float(av[0])) - np.arctan2(self.fw, self.d2)
 
-
+        print 't1 = ', self.t1
+        print 't2 = ', self.t2
 
 
 
@@ -395,6 +404,7 @@ class visual_servoing:
         Motor_value = theta[1]-0.1
 
         rotate_object_anticlockwise(Motor_value)
+
         while(1):
                 
                 theta = read_pos()
@@ -448,7 +458,7 @@ class visual_servoing:
             theta= read_pos()
             Motor_value = theta[0] - 0.02
             rotate_object_clockwise(Motor_value)
-            finger_angle = encoder_gripper_angle_conversion(theta[1],1)
+            finger_angle = encoder_gripper_angle_conversion(theta[1], 1)
             
 
             condition1 = (abs(self.Block_orientation-finger_angle))%90 < 10
@@ -497,32 +507,50 @@ class visual_servoing:
 
         while norm(e) > TOLERANCE:
             
-            start_time_1 = time.time()
 
             X = np.array([self.x, self.y])
             e = X - self.X_d
 
             # Check if object has reached the desired position
-            # if norm(e) < TOLERANCE:
-            #     print 'x, y = ', self.x, self.y
-            #     print 'reached'
-            #     return
+            if norm(e) < TOLERANCE:
+                print 'x, y = ', self.x, self.y
+                print 'reached'
+                return
             
             # Estimate the expected error if object slides on right finger 
-            self.ik_rightFinger()
+            print 'position = ', self.x, self.y
+            #s elf.ik_rightFinger()
+            self.ik_rightFinger_n()
             J_right = np.matrix([[-(self.d1 + self.w0 / 2.0) * sin(self.t1) + (self.w0 / 2.0 + self.fw) * cos(self.t1)], [(self.d1 + self.w0 / 2.0) * cos(self.t1) + (self.w0 / 2.0 + self.fw) * sin(self.t1)]], dtype='float')
             dtheta_right = -np.linalg.pinv(J_right) *  (e.reshape(e.shape[0], 1))
             X_right = np.array([(self.d1 + self.w0 / 2.0) * cos(self.t1 + dtheta_right[0, 0]) + (self.w0 / 2.0 + self.fw) * sin(self.t1 + dtheta_right[0, 0]), (self.d1 + self.w0 / 2.0) * sin(self.t1 + dtheta_right[0, 0]) - (self.w0 / 2.0 + self.fw) * cos(self.t1 + dtheta_right[0, 0])])
             e_right = norm(X_right - self.X_d)
-            
+            print 'error right', e_right
+            print 'dtheta right', dtheta_right
             # Estimate the expected error if object slides on left finger
-            self.ik_leftFinger()
+            #self.ik_leftFinger()
             J_left = np.matrix([[-(self.d2 + self.w0 / 2.0) * sin(self.t2) - (self.w0 / 2.0 + self.fw) * cos(self.t2)], [(self.d2 + self.w0 / 2.0) * cos(self.t2) + (self.w0 / 2.0 + self.fw) * sin(self.t2)]], dtype='float')
             dtheta_left = -np.linalg.pinv(J_left) *  (e.reshape(e.shape[0], 1))
             X_left = np.array([self.wp + (self.d2 + self.w0 / 2.0) * np.cos(self.t2 + dtheta_left[0,0]) - (self.w0 / 2.0 + self.fw) * sin(self.t2 + dtheta_left[0,0]), (self.d2 + self.w0 / 2.0) * sin(self.t2 + dtheta_left[0,0]) + (self.w0 + self.fw) * cos(self.t2 + dtheta_left[0,0])])
             e_left = norm(X_left - self.X_d)
+            print 'error left', e_left
+            print 'dtheta left', dtheta_left
             
-            
+            if (dtheta_left[0, 0] < 0.2):
+                dtheta_left = 0.2
+
+            if (dtheta_left[0, 0] > 0.75):
+                dtheta_left = 0.75
+
+            if (dtheta_right[0, 0] < 0.2):
+                dtheta_right = 0.2
+
+            if (dtheta_right[0, 0] > 0.75):
+                dtheta_right = 0.75
+
+
+
+
             # Executing the action which has the lowest estimated error
             if e_left < e_right:
 
@@ -530,16 +558,22 @@ class visual_servoing:
                 self.translateLeft()
 
                 if dtheta_left[0, 0] > 0:
-                    
+                    if self.action == 6:
+                        slide_left_finger_down(angle_conversion(self.t1,0))
+                    else:
+                        slide_left_finger_down(angle_conversion(self.t1,0))
                     self.action = 6
                     self.pub.publish(self.action)
-                    slide_left_finger_down(angle_conversion(self.t1,0))
+                    
                    
                 else:
-                    
+                    if self.action == 8:
+                        slide_left_finger_up(angle_conversion(self.t2,1))
+                    else:
+                        slide_left_finger_up(angle_conversion(self.t2,1))
                     self.action = 8
                     self.pub.publish(self.action)
-                    slide_left_finger_up(angle_conversion(self.t2,1))
+                    
                     
             else: 
 
@@ -547,19 +581,25 @@ class visual_servoing:
                 self.translateRight()     
                 
                 if dtheta_right[0, 0] < 0:
-        
+                    if self.action == 7:
+                        slide_right_finger_down(angle_conversion(self.t2,1))
+                    else:
+                        slide_right_finger_down(angle_conversion(self.t2,1))
                     self.action = 7
                     self.pub.publish(self.action)
-                    slide_right_finger_down(angle_conversion(self.t2,1))
+                    
                     
                 else:
-    
+                    if self.action == 9:
+                        slide_right_finger_up(angle_conversion(self.t1,0))
+                    else:
+                        slide_right_finger_up(angle_conversion(self.t1,0))    
                     self.action = 9
                     self.pub.publish(self.action)
-                    slide_right_finger_up(angle_conversion(self.t1,0))
+                    
                     
 
-            print 'while loop time', time.time() - start_time_1
+        
 
 
             X = np.array([self.x, self.y])
