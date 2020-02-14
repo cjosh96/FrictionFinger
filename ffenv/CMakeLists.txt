@@ -1,18 +1,16 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(friction_finger_gripper)
+project(ffenv)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
- add_compile_options(-std=c++11)
+# add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  dynamixel_motors
-  common_msgs_gl
   roscpp
   rospy
-  message_generation
+  std_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -22,7 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-#catkin_python_setup()
+# catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -56,11 +54,9 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
- add_service_files(
-   FILES
-   PositionCommand.srv
-   Holdcommand.srv
-   ActionCommand.srv)
+# add_service_files(
+#   FILES
+#   Service1.srv
 #   Service2.srv
 # )
 
@@ -72,10 +68,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   std_msgs  # Or other packages containing msgs
- )
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -107,9 +103,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES friction_finger_gripper
-  CATKIN_DEPENDS dynamixel_motors roscpp
+#  INCLUDE_DIRS include
+#  LIBRARIES ffenv
+#  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
 )
 
@@ -120,32 +116,25 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
- include
+# include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/finger.cpp
-#   src/controller_client.cpp
+#   src/${PROJECT_NAME}/ffenv.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
- #add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-#add_executable(${PROJECT_NAME}_node src/finger_gripper.cpp)
-#add_executable(client_node src/client.cpp)
-#add_executable(controller_node src/controller.cpp)
-#add_executable(high_level_controller_node src/High_level_controller.cpp)
-add_executable(controller_2 src/controller_2.cpp)
-add_executable(controller_new src/controller_new.cpp)
-add_executable(Test src/Test.cpp)
-##add_executable(controller_client_node src/controller_client.cpp)
+# add_executable(${PROJECT_NAME}_node src/ffenv_node.cpp)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -155,39 +144,12 @@ add_executable(Test src/Test.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
- # add_dependencies(client_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-#add_dependencies(controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-#add_dependencies(high_level_controller_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(controller_2 ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(controller_new ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(Test ${${PROJECT_NAME}_EXPORTED_TARGETS} 
-${catkin_EXPORTED_TARGETS})
+
 ## Specify libraries to link a library or executable target against
- #target_link_libraries(${PROJECT_NAME}_node
+# target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
- #target_link_libraries(client_node
-  # ${catkin_LIBRARIES}
- #)
- ##target_link_libraries(controller_node
-  # ${catkin_LIBRARIES}
- #)
- ##target_link_libraries(controller_client_node
-  ## ${catkin_LIBRARIES}
- #)
- ##target_link_libraries(high_level_controller_node
-   #${catkin_LIBRARIES}
- #)
 
-  target_link_libraries(controller_2
-   ${catkin_LIBRARIES}
- )
-  target_link_libraries(controller_new
-   ${catkin_LIBRARIES}
- )
-  target_link_libraries(Test
-   ${catkin_LIBRARIES}
- )
 #############
 ## Install ##
 #############
@@ -197,10 +159,10 @@ ${catkin_EXPORTED_TARGETS})
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
- install(PROGRAMS
-   scripts/Finger_planning.py
-   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
- )
+# install(PROGRAMS
+#   scripts/my_python_script
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
 ## Mark executables and/or libraries for installation
 # install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_node
@@ -228,7 +190,7 @@ ${catkin_EXPORTED_TARGETS})
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_friction_finger_gripper.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_ffenv.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

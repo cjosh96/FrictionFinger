@@ -11,16 +11,16 @@ visual_servoing: 1
 Kp: 0.03
 
 # Plot trajectory (Form: Pixel_coordinates = a_* Cartesian + b_)
-a_x: 2938.4269
-b_x: 603
-a_y: -2721.6781
-b_y: 560
+a_x: 2852.4236
+b_x: 600.852678
+a_y: -2929.1006
+b_y: 429.60196
 
 # Motor values to finger angles
-a_left: -0.002463
-b_left: 1.04474
-a_right: 0.002273
-b_right: 0.561364
+a_left: 0.002192
+b_left: 1.027071
+a_right: 0.002203
+b_right: 0.325983
 
 hold_left: 0.80
 hold_right: 0.70

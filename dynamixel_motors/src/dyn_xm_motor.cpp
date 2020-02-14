@@ -106,16 +106,17 @@ void DynXMMotor::moveTo(double goal_position){
 		printf("[DynXMMotor] Position control is initiated, but dynamixel is not in position control mode. Neglecting...");
 		return;
 	}
-
+	
 	int no_of_trials = 0;
 	do{
+
 		dxl_comm_result_ = packet_handler_->write4ByteTxRx(port_handler_, id_, ADDR_GOAL_POSITION, goal_position, &dxl_error_);
 		no_of_trials++;
 	}while (dxl_comm_result_ != COMM_SUCCESS && no_of_trials<3);
 
     if (dxl_comm_result_ != COMM_SUCCESS){
 	packet_handler_->getTxRxResult(dxl_comm_result_);
-		std::runtime_error("[DynXMMotor] Cannot communicate with the dynamixel.");
+	std::runtime_error("[DynXMMotor] Cannot communicate with the dynamixel.");
 	}
     else if (dxl_error_ != 0){
 		packet_handler_->getRxPacketError(dxl_error_);
@@ -123,7 +124,48 @@ void DynXMMotor::moveTo(double goal_position){
 	}
 
 }
+void DynXMMotor::setVelocity(double velocity){
+	if(getOperatingMode() != POSITION_CONTROL_MODE){
+		printf("[DynXMMotor] Position control is initiated, but dynamixel is not in position control mode. Neglecting...");
+		return;
+	}
+	int no_of_trials = 0;
+	do{
+		dxl_comm_result_ = packet_handler_->write4ByteTxRx(port_handler_, id_, ADDR_PROFILE_VELOCITY, velocity, &dxl_error_);
+		no_of_trials++;
+	}while (dxl_comm_result_ != COMM_SUCCESS && no_of_trials <3);
 
+	if (dxl_comm_result_ != COMM_SUCCESS){
+		packet_handler_->getTxRxResult(dxl_comm_result_);
+		std::runtime_error("[DynXMMotor] Cannot communicate with the dynamixel.");
+	}
+	else if (dxl_error_ != 0){
+		packet_handler_->getRxPacketError(dxl_error_);
+		std::runtime_error("[DynXMMotor Error while setting velocity. ");
+	}
+}
+
+void DynXMMotor::sendVelocity(double goal_velocity){
+	if(getOperatingMode() != VELOCITY_CONTROL_MODE){
+		printf("[DynXMMotor] Velocity control is initiated, but dynamixel is not in Velocity control mode. Neglecting...");
+		return;
+	}
+	int no_of_trials = 0;
+	do{
+		dxl_comm_result_ = packet_handler_->write4ByteTxRx(port_handler_, id_, ADDR_GOAL_VELOCITY, goal_velocity, &dxl_error_);
+		no_of_trials++;
+	}while (dxl_comm_result_ != COMM_SUCCESS && no_of_trials<3);
+
+	if (dxl_comm_result_ != COMM_SUCCESS){
+	packet_handler_->getTxRxResult(dxl_comm_result_);
+		std::runtime_error("[DynXMMotor] Cannot communicate with the dynamixel.");
+	}
+    	else if (dxl_error_ != 0){
+		packet_handler_->getRxPacketError(dxl_error_);
+		std::runtime_error("[DynXMMotor] Error while sending velocity reference.");
+	}
+		
+} 
 void DynXMMotor::applyTorque(double goal_torque){
 	goal_torque = goal_torque * 1193;
 	if(getOperatingMode() != CURRENT_CONTROL_MODE){
@@ -172,6 +214,8 @@ void DynXMMotor::resetOperationModeReference(int mode){
 		applyTorque(readCurrent());
 	else if (mode == POSITION_CONTROL_MODE)
 		moveTo(readPos());
+	else if (mode == VELOCITY_CONTROL_MODE)
+		moveTo(readVelocity()); 		//Velocity
 }
 
 void DynXMMotor::setToTorqueControlMode(){
@@ -180,6 +224,10 @@ void DynXMMotor::setToTorqueControlMode(){
 
 void DynXMMotor::setToPositionControlMode(){
 	setOperatingMode(POSITION_CONTROL_MODE);
+}
+
+void DynXMMotor::setToVelocityControlMode(){
+	setOperatingMode(VELOCITY_CONTROL_MODE);
 }
 
 int DynXMMotor::getOperatingMode(){
@@ -218,6 +266,25 @@ double DynXMMotor::readPos(){
 	return ((int)current_pos)/4095.0;
 }
 
+double DynXMMotor::readVelocity(){
+	int32_t current_velocity;
+	int no_of_trials = 0;
+	do{
+		dxl_comm_result_ = packet_handler_->read4ByteTxRx(port_handler_, id_, ADDR_PRESENT_VELOCITY, (uint32_t*)&current_velocity, &dxl_error_);
+		no_of_trials++;
+	}while (dxl_comm_result_ != COMM_SUCCESS && no_of_trials<3);
+
+	if (dxl_comm_result_ != COMM_SUCCESS){
+		packet_handler_->getTxRxResult(dxl_comm_result_);
+		std::runtime_error("[DynXMMotor] Cannot communicate with the dynamixel.");
+	}
+	else if (dxl_error_ != 0){
+		packet_handler_->getRxPacketError(dxl_error_);
+		std::runtime_error("[DynXMMotor] Error while reading operation mode.");
+	}
+	//return ((int)current_velocity)/4095.0;
+		
+}
 double DynXMMotor::readCurrent(){
 	int16_t current_curr;
 	int no_of_trials = 0;

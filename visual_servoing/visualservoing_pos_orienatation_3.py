@@ -52,6 +52,9 @@ def angle_conversion(angle, flag):
     return (n_angle)
 
 
+
+
+
 def encoder_gripper_angle_conversion(enc,flag):
     
     # 0-> Left, 1-> Right
@@ -64,46 +67,59 @@ def encoder_gripper_angle_conversion(enc,flag):
 
 def slide_left_finger_down(p):
 
+    start_time = time.time()
     rospy.wait_for_service('Slide_Left_Finger_Down')
+    print "1 - ", time.time()-start_time
 
+    start_time = time.time()
     try:
         slide_left_down = rospy.ServiceProxy('Slide_Left_Finger_Down', PositionCommand)
         resp1 = slide_left_down(p)
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
-
+    print "2 - ", time.time()-start_time
 
 def slide_left_finger_up(p):
 
+    start_time = time.time()
     rospy.wait_for_service('Slide_Left_Finger_Up')
     
+    start_time = time.time()
     try:
         slide_left_up = rospy.ServiceProxy('Slide_Left_Finger_Up', PositionCommand)
         resp1 = slide_left_up(p)
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
-
+    print "2 - ", time.time()-start_time
 
 def slide_right_finger_down(p):
 
+    start_time = time.time()
     rospy.wait_for_service('Slide_Right_Finger_Down')
-    
+    print "1 - ", time.time()-start_time
+
+    start_time = time.time()
     try:
         slide_right_down = rospy.ServiceProxy('Slide_Right_Finger_Down', PositionCommand)
         resp1 = slide_right_down(p)
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
-
+    print "2 - ", time.time()-start_time
 
 def slide_right_finger_up(p):
     
+    start_time = time.time()
     rospy.wait_for_service('Slide_Right_Finger_Up')
-    
+    print "1 - ", time.time()-start_time
+
+
+    start_time = time.time()
     try:
         slide_right_up = rospy.ServiceProxy('Slide_Right_Finger_Up', PositionCommand)
         resp1 = slide_right_up(p)
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
+    print "2 - ", time.time()-start_time
 
 def rotate_object_anticlockwise(p):
     
@@ -520,6 +536,7 @@ class visual_servoing:
             # Estimate the expected error if object slides on right finger 
             print 'position = ', self.x, self.y
             #s elf.ik_rightFinger()
+            start_time_calc = time.time()
             self.ik_rightFinger_n()
             J_right = np.matrix([[-(self.d1 + self.w0 / 2.0) * sin(self.t1) + (self.w0 / 2.0 + self.fw) * cos(self.t1)], [(self.d1 + self.w0 / 2.0) * cos(self.t1) + (self.w0 / 2.0 + self.fw) * sin(self.t1)]], dtype='float')
             dtheta_right = -np.linalg.pinv(J_right) *  (e.reshape(e.shape[0], 1))
@@ -533,44 +550,48 @@ class visual_servoing:
             dtheta_left = -np.linalg.pinv(J_left) *  (e.reshape(e.shape[0], 1))
             X_left = np.array([self.wp + (self.d2 + self.w0 / 2.0) * np.cos(self.t2 + dtheta_left[0,0]) - (self.w0 / 2.0 + self.fw) * sin(self.t2 + dtheta_left[0,0]), (self.d2 + self.w0 / 2.0) * sin(self.t2 + dtheta_left[0,0]) + (self.w0 + self.fw) * cos(self.t2 + dtheta_left[0,0])])
             e_left = norm(X_left - self.X_d)
+            print 'calculation time', time.time()-start_time_calc
+            '''
             print 'error left', e_left
-            print 'dtheta left', dtheta_left
+            print 'dtheta_left', (dtheta_left)
+            print 'dtheta_left[0]', (dtheta_left[0])
+            print 'dtheta_left[0][0]', (dtheta_left[0][0])
+            print 'dtheta_left.item(0)', (dtheta_left.item(0)) 
+            print 'dtheta_left[0,0]', (dtheta_left[0,0])
+            print 'dtheta left', (dtheta_left[0,0]>0.75)
+            '''
+
             
-            if (dtheta_left[0, 0] < 0.2):
-                dtheta_left = 0.2
+            if(dtheta_left[0,0]<0.2):
+                dtheta_left[0,0] = 0.2
 
-            if (dtheta_left[0, 0] > 0.75):
-                dtheta_left = 0.75
 
-            if (dtheta_right[0, 0] < 0.2):
-                dtheta_right = 0.2
+            elif(dtheta_left[0,0]>=0.75):
+                dtheta_left[0,0] = 0.75
 
-            if (dtheta_right[0, 0] > 0.75):
-                dtheta_right = 0.75
+            if(dtheta_right[0,0]<0.2):
+                dtheta_right[0,0] = 0.2
 
+            elif(dtheta_right[0,0]>0.75):
+                dtheta_right[0,0] = 0.75
 
 
 
             # Executing the action which has the lowest estimated error
+            start_time_action = time.time()
             if e_left < e_right:
 
                 self.t2 = self.t2 + Kp*dtheta_left[0, 0]
                 self.translateLeft()
 
                 if dtheta_left[0, 0] > 0:
-                    if self.action == 6:
-                        slide_left_finger_down(angle_conversion(self.t1,0))
-                    else:
-                        slide_left_finger_down(angle_conversion(self.t1,0))
+                    slide_left_finger_down(angle_conversion(self.t1,0))
                     self.action = 6
                     self.pub.publish(self.action)
                     
                    
                 else:
-                    if self.action == 8:
-                        slide_left_finger_up(angle_conversion(self.t2,1))
-                    else:
-                        slide_left_finger_up(angle_conversion(self.t2,1))
+                    slide_left_finger_up(angle_conversion(self.t2,1))
                     self.action = 8
                     self.pub.publish(self.action)
                     
@@ -581,25 +602,19 @@ class visual_servoing:
                 self.translateRight()     
                 
                 if dtheta_right[0, 0] < 0:
-                    if self.action == 7:
-                        slide_right_finger_down(angle_conversion(self.t2,1))
-                    else:
-                        slide_right_finger_down(angle_conversion(self.t2,1))
+                    slide_right_finger_down(angle_conversion(self.t2,1))
                     self.action = 7
                     self.pub.publish(self.action)
                     
                     
                 else:
-                    if self.action == 9:
-                        slide_right_finger_up(angle_conversion(self.t1,0))
-                    else:
-                        slide_right_finger_up(angle_conversion(self.t1,0))    
+                    slide_right_finger_up(angle_conversion(self.t1,0))    
                     self.action = 9
                     self.pub.publish(self.action)
                     
                     
 
-        
+            print 'time for executing action', time.time() - start_time_action
 
 
             X = np.array([self.x, self.y])

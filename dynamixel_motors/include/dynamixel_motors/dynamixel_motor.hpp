@@ -18,13 +18,17 @@ public:
 	virtual void enable() = 0;
 	virtual void disable() = 0;
 	virtual void moveTo(double goal_position) = 0;
+	virtual void sendVelocity(double goal_velocity) = 0;
 	virtual void applyTorque(double goal_torque) = 0;
 	virtual void setToTorqueControlMode() = 0;
 	virtual void setToPositionControlMode() = 0;
+	virtual void setToVelocityControlMode() = 0;
 	virtual void setOperatingMode(int mode) = 0;
 	virtual void setCurrentLimit(double limit) = 0;
+	virtual void setVelocity(double velocity) = 0;
 	virtual double readPos() = 0;
 	virtual double readCurrent() = 0;
+	virtual double readVelocity() = 0;
 	virtual int getOperatingMode() = 0;
 	virtual bool isMoving() = 0;
 };

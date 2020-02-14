@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 	ros::Subscriber sub2 = n.subscribe("/aruco_simple/pose2", 1000, Callback2);
 	ros::Publisher pub = n.advertise<geometry_msgs::Point>("/object_position", 1000);
 	ros::Publisher pub1 = n.advertise<std_msgs::Float32>("/object_orientation", 1000);
-	ros::Rate r(15);
+	ros::Rate r(20);
 	while(ros::ok())
 	{
 		for (int i=0; i<3; i++)

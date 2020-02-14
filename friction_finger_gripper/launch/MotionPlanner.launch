@@ -16,13 +16,6 @@
 
 	<node pkg="object_position_tracking" type="object_position_tracking_node" name="object_position_tracking_node"/>
 
-	<node pkg="rosservice" type="rosservice" name="Hold_object" args = "hold_left hold_right"/>
-	<node pkg="visual_servoing" type="visualservoing_pos_orienatation_3.py" name="visualservoing_pos_orienatation_3" output="screen"/>
-	
-	<group if="$(eval arg('vs_enable') ==1)"> 
-		<node pkg="friction_finger_gripper" type="Motion_plan.py" name="Motion_plan" output="screen"/>
-		<node pkg="visual_servoing" type="visualservoing_pos_orienatation_3.py" name="visualservoing_pos_orienatation_3" output="screen"/>
-	</group>
 
 	<node pkg="friction_finger_gripper" type="Plot_trajectory.py" name="Plot_trajectory" output="screen"/>
 </launch>

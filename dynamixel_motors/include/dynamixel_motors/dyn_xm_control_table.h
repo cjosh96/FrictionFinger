@@ -19,7 +19,7 @@
 #define ADDR_PWM_LIMIT				36 		// 2 bytes (RW)
 #define ADDR_CURRENT_LIMIT			38 		// 2 bytes (RW)
 #define ADDR_ACCELERATION_LIMIT		40 		// 4 bytes (RW)
-#define ADDR_VELOCITY_LIMIT			44 		// 4 bytes (RW)
+#define ADDR_VELOCITY_LIMIT			10 		// 4 bytes (RW)
 #define ADDR_MAX_POSITION_LIMIT		48 		// 4 bytes (RW)
 #define ADDR_MIX_POSITION_LIMIT		52 		// 4 bytes (RW)
 #define ADDR_SHUTDOWN				63 		// 1 byte (RW)

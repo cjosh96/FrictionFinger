@@ -29,7 +29,6 @@ float read_position(ros::NodeHandle n,int motor_num)
    	}
   }
 
-
 bool set_actuator_modes(ros::NodeHandle n,int size, int modes[])
 {
    	//ros::NodeHandle n;
@@ -145,7 +144,7 @@ bool set_friction_right(ros::NodeHandle n,bool friction_surface)
 bool hold_object(ros::NodeHandle n,float position_left,float position_right)
 {
    	bool send_pos1,send_pos2;
-   	int modes1[] = {3,3};
+   	int modes1[] = {1,3};
    	set_modes=set_actuator_modes(n,2,modes1);
    	send_pos1=command_position(n,0,position_left);
    	send_pos2=command_position(n,1,position_right); 

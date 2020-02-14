@@ -16,15 +16,19 @@ public:
 	void disable();
 	bool isMoving();
 	void moveTo(double goal_position);
+	void sendVelocity(double goal_velocity);
+	void setVelocity(double velocity);
 	void applyTorque(double goal_torque);
 	void setToTorqueControlMode();
 	void setToPositionControlMode();
+	void setToVelocityControlMode();
 	void setOperatingMode(int mode);
 	void setDriveMode(int direction);
 	void setCurrentLimit(double limit);
 	void resetOperationModeReference(int mode);
 	double readCurrent();
 	double readPos();
+	double readVelocity();
 	int getOperatingMode();
 };
 #endif
