@@ -262,6 +262,12 @@ class visual_servoing:
 
     ################################# FORWARD KINEMATICS CALCULATION #####################################################
 	def translateLeft(self):
+
+		x_coord = wp + (self.d2 + b/2)*np.cos(self.t2) - (b/2 + fw)*np.sin(self.t2)
+		y_coord = (self.d2 + b/2)*np.sin(self.t2) + (b/2 + fw)*np.cos(self.t2)
+
+		R = np.array([[cos(self.t2), -sin(self.t2), x_coord], [sin(self.t2), cos(self.t2), y_coord], [0, 0, 1]])
+        coords = np.dot(R, np.array)
         # Center Coordinates
 		x_square = wp + (self.d2 + w0 / 2.) * np.cos(np.float64(self.t2)) - (fw + w0 / 2.) * np.sin(np.float64(self.t2))
 		y_square = (self.d2 + w0 / 2.) * np.sin(np.float64(self.t2)) + (fw + w0 / 2.) * np.cos(np.float64(self.t2))
@@ -276,18 +282,20 @@ class visual_servoing:
 		self.t1 = np.arctan2(float(av[1]), float(av[0])) + np.arctan2(fw, self.d1)
 
 	def translateRight(self):
-		# Center Coordinates of square
-		x_square = (self.d1 + w0 / 2.) * np.cos(self.t1) + (w0 / 2. + fw) * np.sin(self.t1)
-		y_square = (self.d1 + w0 / 2.) * np.sin(self.t1) - (w0 / 2. + fw) * np.cos(self.t1)
-		# print 't1 = ', self.t1
-		# Calculate theta1, d1
-		d1v = np.array([self.d1 * np.cos(self.t1), self.d1 * np.sin(self.t1)])
-		w0v = np.array([w0 * np.sin(self.t1), -w0 * np.cos(self.t1)])
-		wpv = np.array([wp, 0.])
-		f2v = np.array([fw * np.sin(self.t1), -fw * np.cos(self.t1)])
-		av = d1v + w0v + f2v - wpv
-		self.d2 = np.sqrt(float((av * av).sum() - fw * fw))
-		self.t2 = np.arctan2(float(av[1]), float(av[0])) - np.arctan2(fw, self.d2)
+
+		# Coordinates of the center of the rectangle
+		x_coord = (self.d1 + a/2)*np.cos(t1) + (b/2 + fw)*np.sin(t1)
+		y_coord = (self.d1 + a/2)*np.sin(t1) - (b/2 + fw)*np.sin(t1)
+
+		R = np.array([[cos(t1), -sin(t1), x_coord], [sin(t1), cos(t1), y_coord], [0, 0, 1]])
+		coords = np.dot(R, np.array([[a/2, a/2, -a/2, -a/2], [-b/2, b/2, b/2, -b/2], [1, 1, 1, 1]]))
+
+		alpha = min(np.arctan2(coords[1,:].ravel().astype(float), coords[0,:].ravel().astype(float)))
+		point_of_contact = np.argmin((np.arctan2(coords[1,:].ravel().astype(float), coords[0,:].ravel().astype(float))))
+		
+		self.d2 = sqrt((coords[0, point_of_contact] - wp)**2 + coords[1, point_of_contact]**2)
+		self.t2 = alpha - np.arctan2(fw, self.d2)
+
 
 	'''
 

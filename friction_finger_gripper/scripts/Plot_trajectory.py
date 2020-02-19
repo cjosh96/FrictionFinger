@@ -82,7 +82,7 @@ class trajectory:
         # cv2.line(self.cv_image, (10, 10), (10, 20), (255, 255, 0), 2)
         cv2.circle(self.cv_image, self.XY_to_pixel_conversion(start[0],start[1]), 9,(255, 0, 255),-1)
         cv2.circle(self.cv_image, self.XY_to_pixel_conversion(end[0],end[1]), 9, (100, 60, 255),-1)
-
+	cv2.circle(self.cv_image, self.XY_to_pixel_conversion(0,0), 9, (100, 255, 100),-1)
         font = cv2.FONT_HERSHEY_SIMPLEX
         cv2.putText(self.cv_image, self.action, (50,30), font, 1, (0, 0, 10), 2)
         cv2.imshow("Image window", self.cv_image)

@@ -38,6 +38,7 @@ while(1):
 
     # draw the tracks
     for i,(new,old) in enumerate(zip(good_new,good_old)):
+        print np.linalg.norm(new - old)
         a,b = new.ravel()
         c,d = old.ravel()
         mask = cv2.line(mask, (a,b),(c,d), color[i].tolist(), 2)

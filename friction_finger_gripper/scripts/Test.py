@@ -104,10 +104,11 @@ def slide_right_down(p):
 
 	set_friction_l = set_friction_right(1)
 	set_friction_r = set_friction_left(0)
-
+	send_v = set_velocity(1, 1)
+	send_pos = command_position(1, p)
 	send_torque = command_torque(0, 0.15)
 	
-	send_pos = command_position(1, p)
+	
 
 def slide_right_up(p):
 	start_time_set_modes = time.time()
@@ -134,10 +135,12 @@ def setV(v):
 	
 
 if __name__ == '__main__':
-	modes = [3, 3]
-	set_modes = set_actuator_modes(2, modes)
-	send_v = set_velocity(1, 10)
-	send_pos = command_position(1, 0.4)
+	
+	slide_right_down(0.4)
+	# modes = [3, 3]
+	# set_modes = set_actuator_modes(2, modes)
+	# send_v = set_velocity(1, 10)
+	# send_pos = command_position(1, 0.4)
 
 	#setV(10)
 
