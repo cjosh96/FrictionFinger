@@ -47,12 +47,17 @@ class trajectory:
         self.x = None
         self.y = None
         self.action = ''
+        self.start = None
 
     def listener(self):
         rospy.Subscriber("/object_position", Point, self.callback_position)
         rospy.Subscriber("/usb_cam/image_raw", Image, self.callback)
         rospy.Subscriber("/Action", Int32, self.callback_action)
-        
+        rospy.Subscriber("/State", Int32, self.callback_state)
+
+    def callback_state(self, s):
+        self.start = s.data
+
 
     def callback(self, data):
         global colour
@@ -67,7 +72,7 @@ class trajectory:
         for i in range(2, length - 1):
             # print self.X[0], self.Y[0]
             # print self.X[i], self.Y[i]
-            if i == 1:
+            if i < 10:
                 continue
             if colour[i] == 1:
                 cv2.line(self.cv_image, (self.X[i], self.Y[i]), (self.X[i - 1], self.Y[i - 1]), (0, 0, 255), 5, lineType=8)
@@ -82,7 +87,7 @@ class trajectory:
         # cv2.line(self.cv_image, (10, 10), (10, 20), (255, 255, 0), 2)
         cv2.circle(self.cv_image, self.XY_to_pixel_conversion(start[0],start[1]), 9,(255, 0, 255),-1)
         cv2.circle(self.cv_image, self.XY_to_pixel_conversion(end[0],end[1]), 9, (100, 60, 255),-1)
-	cv2.circle(self.cv_image, self.XY_to_pixel_conversion(0,0), 9, (100, 255, 100),-1)
+        cv2.circle(self.cv_image, self.XY_to_pixel_conversion(0,0), 9, (100, 255, 100),-1)
         font = cv2.FONT_HERSHEY_SIMPLEX
         cv2.putText(self.cv_image, self.action, (50,30), font, 1, (0, 0, 10), 2)
         cv2.imshow("Image window", self.cv_image)
@@ -115,7 +120,6 @@ class trajectory:
         # print self.x, self.y
     
     def callback_action(self, act):
-        print type(act)
 
         if (act.data == 0):
             self.action = 'Left Slide down'
@@ -137,7 +141,6 @@ class trajectory:
             self.action = 'Visual Servoing - Left Slide up'
         if (act.data == 9):
             self.action = 'Visual Servoing - Right Slide up'
-        print self.action
 
     def traj_publisher(self):
         pub = rospy.Publisher("/object_trajectory", Image,queue_size = 50)

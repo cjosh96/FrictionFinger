@@ -26,8 +26,40 @@ JACOBIAN_STEPS=1
 
 # Geometric Parameters
 wp = 6.2
-w0 = 2.5
+w0 = 1
 fw = 1.8
+# Vertices of the shape
+X_vertices = np.array([0.9207, 0.9207, 0, -0.8201, -0.8201, 0])
+Y_vertices = np.array([-0.92913, 0.920691, 1.319, 0.7472, -0.8617, -1.362])
+n = X_vertices.shape[0]
+print n
+contact = 1
+
+distances = np.array([])
+x_d = np.array([])
+y_d = np.array([])
+
+gamma = np.array([])
+
+for i in range(n-1):
+
+	gamma = np.append(gamma, np.arctan2(Y_vertices[i+1]- Y_vertices[i], X_vertices[i+1]- X_vertices[i]))
+	distances = np.append(distances, (X_vertices[i+1]*Y_vertices[i] - Y_vertices[i+1]*X_vertices[i])/sqrt((Y_vertices[i+1]-Y_vertices[i])**2 + (X_vertices[i+1]-X_vertices[i])**2))
+	x_d = np.append(x_d, (Y_vertices[i]*X_vertices[i+1]-X_vertices[i]*Y_vertices[i+1])*(X_vertices[i+1]-X_vertices[i])*(Y_vertices[i+1]-Y_vertices[i])/((Y_vertices[i+1] - Y_vertices[i])**2 + (X_vertices[i+1]-X_vertices[i])**2))
+	if(Y_vertices[i+1]-Y_vertices[i] != 0):
+		y_d = np.append(y_d, (X_vertices[i+1] - X_vertices[i])*x_d[0]/(Y_vertices[i+1]-Y_vertices[i]))
+	else:
+		y_d = np.append(y_d, Y_vertices[i])
+
+gamma = np.append(gamma, np.arctan2(Y_vertices[0]- Y_vertices[n-1], X_vertices[0]- X_vertices[n-1]))
+distances = np.append(distances, (X_vertices[0]*Y_vertices[n-1] - Y_vertices[0]*X_vertices[n-1])/sqrt((Y_vertices[0]-Y_vertices[n-1])**2 + (X_vertices[0]-X_vertices[n-1])**2))
+x_d = np.append(x_d, (Y_vertices[n-1]*X_vertices[0]-X_vertices[n-1]*Y_vertices[0])*(X_vertices[0]-X_vertices[n-1])*(Y_vertices[0]-Y_vertices[n-1])/((Y_vertices[0] - Y_vertices[n-1])**2 + (X_vertices[0]-X_vertices[n-1])**2))
+
+if(Y_vertices[0]-Y_vertices[n-1] != 0):
+	y_d = np.append(y_d, (X_vertices[0] - X_vertices[n-1])*x_d[0]/(Y_vertices[0]-Y_vertices[n-1]))
+else:
+	y_d = np.append(y_d, Y_vertices[0])
+
 
 paramlist = rosparam.load_file('/home/gsathyanarayanan/finger_ws_backup/src/friction_finger_gripper/config/beg.yaml')
 
@@ -163,6 +195,8 @@ class visual_servoing:
 		self.d2 = None
 		self.action = None
 
+		self.contact_right = 0
+		self.contact_left = 0
 		self.Block_orientation = None
 		'''
 		#publishers for recording the data
@@ -216,7 +250,7 @@ class visual_servoing:
 			self.finger_state = 1
 			send_v = set_velocity(0, 10)
 		send_pos = command_position(0, p)
-		send_torque = command_torque(1, 0.15)
+		send_torque = command_torque(1, 0.12)
 
 	def slide_left_up(self, p):
 		
@@ -229,7 +263,7 @@ class visual_servoing:
 			self.finger_state = 2
 			send_v = set_velocity(1, 10)
 		send_pos = command_position(1, p)
-		send_torque = command_torque(0, 0.15)
+		send_torque = command_torque(0, 0.12)
 		
 
 	def slide_right_down(self, p):
@@ -243,7 +277,7 @@ class visual_servoing:
 			self.finger_state = 3
 			send_v = set_velocity(1, 10)
 		send_pos = command_position(1, p)
-		send_torque = command_torque(0, 0.15)
+		send_torque = command_torque(0, 0.12)
 		
 
 	def slide_right_up(self, p):
@@ -257,37 +291,40 @@ class visual_servoing:
 			self.finger_state = 4
 			send_v = set_velocity(0, 10)
 		send_pos = command_position(0, p)
-		send_torque = command_torque(1, 0.15)
+		send_torque = command_torque(1, 0.12)
 		    
 
     ################################# FORWARD KINEMATICS CALCULATION #####################################################
 	def translateLeft(self):
-        # Center Coordinates
-		x_square = wp + (self.d2 + w0 / 2.) * np.cos(np.float64(self.t2)) - (fw + w0 / 2.) * np.sin(np.float64(self.t2))
-		y_square = (self.d2 + w0 / 2.) * np.sin(np.float64(self.t2)) + (fw + w0 / 2.) * np.cos(np.float64(self.t2))
 
-		# Calculate theta2, d2
-		d2v = np.array([self.d2 * np.cos(np.float64(self.t2)), self.d2 * np.sin(np.float64(self.t2))])
-		w0v = np.array([w0 * np.sin(np.float64(self.t2)), -w0 * np.cos(np.float64(self.t2))])
-		wpv = np.array([wp, 0.])
-		f1v = np.array([fw * np.sin(np.float64(self.t2)), - fw * np.cos(np.float64(self.t2))])
-		av = d2v - f1v - w0v + wpv
-		self.d1 = np.sqrt(float(abs((av * av).sum() - fw * fw)))
-		self.t1 = np.arctan2(float(av[1]), float(av[0])) + np.arctan2(fw, self.d1)
+		x_coord = wp + (self.d2 + norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right]))*np.cos(self.t2) - (distances[self.contact_right] +  fw)*np.sin(self.t2)
+		y_coord = (self.d2 + norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right]))*np.sin(self.t2) + (distances[self.contact_right] + fw)*np.cos(self.t2)
+
+		R = np.array([[cos(-gamma[self.contact_right] + self.t2), -sin(-gamma[self.contact_right] + self.t2), x_coord], [sin(-gamma[self.contact_right] + self.t2), cos(-gamma[self.contact_right] + self.t2), y_coord], [0, 0, 1]])
+		coords = np.dot(R, np.array([X_vertices, Y_vertices, np.ones((1,n))]))
+
+		alpha = max(np.arctan2(coords[1,:].ravel().astype(float), coords[0,:].ravel().astype(float)))
+		self.contact_left = np.argmax(np.arctan2(coords[1,:].ravel().astype(float), coords[0,:].ravel().astype(float)))
+
+		self.d1 = sqrt((coords[0, contact_left] - wp)**2 + coords[1, contact_left]**2 -fw**2)
+		self.t1 = alpha + np.arctan2(fw, self.d1)
+
 
 	def translateRight(self):
-		# Center Coordinates of square
-		x_square = (self.d1 + w0 / 2.) * np.cos(self.t1) + (w0 / 2. + fw) * np.sin(self.t1)
-		y_square = (self.d1 + w0 / 2.) * np.sin(self.t1) - (w0 / 2. + fw) * np.cos(self.t1)
-		# print 't1 = ', self.t1
-		# Calculate theta1, d1
-		d1v = np.array([self.d1 * np.cos(self.t1), self.d1 * np.sin(self.t1)])
-		w0v = np.array([w0 * np.sin(self.t1), -w0 * np.cos(self.t1)])
-		wpv = np.array([wp, 0.])
-		f2v = np.array([fw * np.sin(self.t1), -fw * np.cos(self.t1)])
-		av = d1v + w0v + f2v - wpv
-		self.d2 = np.sqrt(float((av * av).sum() - fw * fw))
-		self.t2 = np.arctan2(float(av[1]), float(av[0])) - np.arctan2(fw, self.d2)
+
+		# Coordinates of the center of the rectangle
+		x_coord = (self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left]))*np.cos(self.t1) + (distances[self.contact_left] + fw)*np.sin(self.t1)
+		y_coord = (self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left]))*np.sin(self.t1) - (distances[self.contact_left] + fw)*np.sin(self.t1)
+
+		R = np.array([[cos(-alpha[self.contact_left] + self.t1), -sin(-alpha[self.contact_left] + self.t1), x_coord], [sin(-alpha[self.contact_left] + self.t1), cos(-alpha[self.contact_left] + self.t1), y_coord], [0, 0, 1]])
+		coords = np.dot(R, np.array([X_vertices, Y_vertices, np.ones((1,n))]))
+
+		alpha = min(np.arctan2(coords[1,:].ravel().astype(float), coords[0,:].ravel().astype(float)))
+		self.contact_right = np.argmin((np.arctan2(coords[1,:].ravel().astype(float), coords[0,:].ravel().astype(float))))
+		
+		self.d2 = sqrt((coords[0, self.contact_right] - wp)**2 + coords[1, self.contact_right]**2 - fw**2)
+		self.t2 = alpha - np.arctan2(fw, self.d2)
+
 
 	'''
 
@@ -338,9 +375,8 @@ class visual_servoing:
 	##### INVERSE KINEMATICS FOR SLIDING ALONG THE RIGHT FINGER #####
 	def left_equations_d(self, variables):
 		d2_sol = variables
-		eqn3 = (self.x - wp)**2 + self.y**2 - (d2_sol + w0 / 2.)**2 - (fw + w0 / 2.)**2
+		eqn3 = (self.x - wp)**2 + self.y**2 - (d2_sol + norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right]))**2 - (fw + distances[self.contact_right])**2
 		return (eqn3[0])
-
 
 	def solve_d2(self):
 
@@ -351,34 +387,42 @@ class visual_servoing:
 
 		self.d2 = sold2
 
-
-	def solve_left(self, variables):
+	def left_equations_theta(self, variables):
 		t2_sol = variables[0]
 		self.solve_d2() 
-		eqn1 = (self.d2 + w0 / 2.) * cos(t2_sol) - (fw + w0 / 2.) * sin(t2_sol) - (self.x - wp)
+		eqn1 = (self.d2 +  norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right])) * cos(t2_sol) - (fw + distances[self.contact_right]) * sin(t2_sol) - (self.x - wp)
 		return eqn1
 
+	def solve_t1_slide_left(self, variables, coords):
+		solt2 = variables[0]
+		eqn = coords[1]*cos(solt2) - coords[0]*sin(solt2) + fw
+		return eqn
 
 	def ik_leftFinger_n(self):
 
-		initial_guess_t1 = np.pi/3
-		solution_t2 = opt.fsolve(self.solve_left, initial_guess_t1)
-
 		for i in range(1,5):
 			initial_guess_t1 = np.pi * i / 5
-			solution = opt.fsolve(self.solve_left, initial_guess_t1, full_output=True)
+			solution = opt.fsolve(self.left_equations_theta, initial_guess_t1, full_output=True)
 			if solution[2]==1 and solution[0] > 0 and solution[0] < np.pi:
-				solt2 = solution_t2[0]
+				solt2 = solution[0]
 				self.t2 = float(solt2)
 
-		d2v = np.array([self.d2 * np.cos(np.float64(self.t2)), self.d2 * np.sin(np.float64(self.t2))])
-		w0v = np.array([w0 * np.sin(np.float64(self.t2)), -w0 * np.cos(np.float64(self.t2))])
-		wpv = np.array([wp, 0.])
-		f1v = np.array([fw * np.sin(np.float64(self.t2)), -fw * np.cos(np.float64(self.t2))])
-		av = d2v - f1v - w0v + wpv
-		self.d1 = np.sqrt(float(abs((av * av).sum() - fw * fw)))
-		self.t1 = np.arctan2(float(av[1]), float(av[0])) + np.arctan2(fw, self.d1)
+		R = np.array([[cos(-gamma[self.contact_right] + self.t2), -sin(-gamma[self.contact_right] + self.t2), self.x], [sin(-gamma[self.contact_right] + self.t2), cos(-gamma[self.contact_right] + self.t2), self.y], [0, 0, 1]])
+		coords = np.dot(R, np.concatenate(([X_vertices], [Y_vertices], np.ones((1,n)))))
+		
+		beta = -9999
+		contact_left = -1
 
+		for i in range(n):
+			initial_guess_t1 = np.pi/2	
+			solution = opt.fsolve(self.solve_t1_slide_left, initial_guess_t1, args = coords[:,i], full_output=True)
+			if (solution[2]==1 and solution[0] > 0 and solution[0] < np.pi and solution[0] > beta):
+				beta = solution[0]
+				self.contact_left = i
+
+		self.t1 = beta[0]
+		self.d1 = sqrt((coords[0, self.contact_left] - wp)**2 + coords[1, self.contact_left]**2 -fw**2)
+		print 'left ', self.d1, self.d2, self.t1, self.t2
 
     ##### INVERSE KINEMATICS FOR SLIDING ALONG THE RIGHT FINGER #####
 	def right_equations_d(self, variables):
@@ -387,47 +431,56 @@ class visual_servoing:
         
 		eqn3 = self.x**2 + self.y**2 - (d1_sol + w0 / 2.)**2 - (fw + w0 / 2.)**2
 		return (eqn3[0])
-
     
 	def solve_d1(self):
-        
+    
 		initial_guess_d1 = 5.8
-        
+
 		solution = opt.fsolve(self.right_equations_d, initial_guess_d1, xtol= 1e-5)
 		sold1 =  solution[0]
 
 		self.d1 = sold1
 
-
 	def right_equations_theta(self, variables):
-        
+
 		t1_sol = variables[0]
-        
 		self.solve_d1()
-		eqn1 = (self.d1 + w0 / 2.) * cos(t1_sol) + (fw + w0 / 2.) * sin(t1_sol) - self.x
+		eqn1 = (self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left])) * cos(t1_sol) + (fw + distances[self.contact_left]) * sin(t1_sol) - self.x
 		return eqn1
     
+ 	def solve_t2_slide_right(self, variables, coords):
+		solt2 = variables[0]
+		eqn = coords[1]*cos(solt2) - (coords[0] - wp)*sin(solt2) - fw
+		return eqn
+
 	def ik_rightFinger_n(self):
     
-		initial_guess_t1 = np.pi/3
-		solution_t1 = opt.fsolve(self.right_equations_theta, initial_guess_t1, xtol= 1e-5)
-        
 		for i in range(1,5):
 			initial_guess_t1 = np.pi * i / 5
-			solution = opt.fsolve(self.solve_left, initial_guess_t1, full_output=True)
+			solution = opt.fsolve(self.right_equations_theta, initial_guess_t1, full_output=True)
 			if solution[2]==1 and solution[0] > 0 and solution[0] < np.pi:
-				self.t1 = float(solution_t1[0])
+				self.t1 = float(solution[0])
         
-		d1v = np.array([self.d1 * np.cos(self.t1), self.d1 * np.sin(self.t1)])
-		w0v = np.array([w0 * np.sin(self.t1), w0 * np.cos(self.t1)])
-		wpv = np.array([wp, 0.])
-		f2v = np.array([fw * np.sin(self.t1), fw * np.cos(self.t1)])
-		av = d1v + w0v + f2v - wpv
-		self.d2 = np.sqrt(float((av * av).sum() - fw * fw))
-		self.t2 = np.arctan2(float(av[1]), float(av[0])) - np.arctan2(fw, self.d2)
-
-
 		
+		R = np.array([[cos(-gamma[self.contact_left] + self.t1), -sin(-gamma[self.contact_left] + self.t1), self.x], [sin(-gamma[self.contact_left] + self.t1), cos(-gamma[self.contact_left] + self.t1), self.y], [0, 0, 1]])
+		coords = np.dot(R, np.concatenate(([X_vertices], [Y_vertices], np.ones((1,n)))))
+
+
+		beta = 99999
+		self.contact_right = -1
+		
+		for i in range(n):
+			initial_guess_t2 = np.pi/2
+			solution = opt.fsolve(self.solve_t2_slide_right, initial_guess_t2, args = coords[:,i], full_output=True)
+			if (solution[2]==1 and solution[0] > 0 and solution[0] < np.pi and solution[0] < beta):
+				beta = solution[0]
+				contact_right = i
+		
+		self.t2 = beta[0]	
+		self.d2 = sqrt((coords[0, self.contact_right] - wp)**2 + coords[1, self.contact_right]**2 - fw**2)
+		print 'right ', self.d1, self.d2, self.t1, self.t2
+
+
     ###################### Visual Servoing Control #######################
 	def controller(self, goal_x,goal_y, goal_theta, TOLERANCE = 0.5):
 
@@ -481,19 +534,23 @@ class visual_servoing:
 			# 	return
 				# Read the actuator angles and go to the position after it is reached
 			# Estimate the expected error if object slides on right finger 
-			#self.ik_rightFinger()
-			self.ik_leftFinger_n()
-			J_right = np.matrix([[-(self.d1 + w0 / 2.0) * sin(self.t1) + (w0 / 2.0 + fw) * cos(self.t1)], [(self.d1 + w0 / 2.0) * cos(self.t1) + (w0 / 2.0 + fw) * sin(self.t1)]], dtype='float')
+			self.ik_rightFinger_n()
+			# self.ik_leftFinger_n()
+			# print 'd1, d2, t1, t2', self.d1, self.d2, self.t1, self.t2
+
+			J_right = np.matrix([[-(self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left])) * sin(self.t1) + (distances[self.contact_left] + fw) * cos(self.t1)], [(self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left])) * cos(self.t1) + (distances[self.contact_left] + fw) * sin(self.t1)]], dtype='float')
 			dtheta_right = -2.5*np.linalg.pinv(J_right) *  (e.reshape(e.shape[0], 1))
-			X_right = np.array([(self.d1 + w0 / 2.0) * cos(self.t1 + dtheta_right[0, 0]) + (w0 / 2.0 + fw) * sin(self.t1 + dtheta_right[0, 0]), (self.d1 + w0 / 2.0) * sin(self.t1 + dtheta_right[0, 0]) - (w0 / 2.0 + fw) * cos(self.t1 + dtheta_right[0, 0])])
+			X_right = np.array([(self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left])) * cos(self.t1 + dtheta_right[0, 0]) + (distances[self.contact_left] + fw) * sin(self.t1 + dtheta_right[0, 0]), (self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left])) * sin(self.t1 + dtheta_right[0, 0]) - (distances[self.contact_left]+ fw) * cos(self.t1 + dtheta_right[0, 0])])
 			e_right = norm(X_right - self.X_d)
 			# Estimate the expected error if object slides on left finger
 			# self.ik_leftFinger()
-			J_left = np.matrix([[-(self.d2 + w0 / 2.0) * sin(self.t2) - (w0 / 2.0 + fw) * cos(self.t2)], [(self.d2 + w0 / 2.0) * cos(self.t2) + (w0 / 2.0 + fw) * sin(self.t2)]], dtype='float')
+			self.ik_leftFinger_n()
+			J_left = np.matrix([[-(self.d2 + norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right])) * sin(self.t2) - (distances[self.contact_right] + fw) * cos(self.t2)], [(self.d2 +norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right])) * cos(self.t2) + (distances[self.contact_right] + fw) * sin(self.t2)]], dtype='float')
 			dtheta_left = -2.5*np.linalg.pinv(J_left) *  (e.reshape(e.shape[0], 1))
-			X_left = np.array([wp + (self.d2 + w0 / 2.0) * np.cos(self.t2 + dtheta_left[0,0]) - (w0 / 2.0 + fw) * sin(self.t2 + dtheta_left[0,0]), (self.d2 + w0 / 2.0) * sin(self.t2 + dtheta_left[0,0]) + (w0 + fw) * cos(self.t2 + dtheta_left[0,0])])
+			X_left = np.array([wp + (self.d2 + norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right])) * np.cos(self.t2 + dtheta_left[0,0]) - (distances[self.contact_right] + fw) * sin(self.t2 + dtheta_left[0,0]), (self.d2 + norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right])) * sin(self.t2 + dtheta_left[0,0]) + (distances[self.contact_right] + fw) * cos(self.t2 + dtheta_left[0,0])])
 			e_left = norm(X_left - self.X_d)
-			
+
+
 			print 'dtheta_left', dtheta_left, 'dtheta_right', dtheta_right
 			
 			####### SET LIMITS FOR DELTA THETAS ########
@@ -592,7 +649,7 @@ class visual_servoing:
 			e = X - self.X_d
 			# print 'total time', time.time() - start_time_action
 		# theta = read_pos()
-		# self.stop_action()			# Uncomment if there is an overshoot at the end
+		# self.stop_action()
 
 def Visual_Servoing(req):
 	print '***************'

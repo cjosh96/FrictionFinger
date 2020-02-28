@@ -2,19 +2,19 @@ start_x: 0.0288
 start_y: 0.0580
 end_x: 0.025
 end_y: 0.10
+theta_goal: 0
 
 # Method
-motion_planner: 1
-visual_servoing: 1
+method: 2
 
-# Visual servo Controller gain
-Kp: 0.03
+# Visual servoing parameters
+Tolerance: 0.5
 
 # Plot trajectory (Form: Pixel_coordinates = a_* Cartesian + b_)
-a_x: 2587.5715
-b_x: 541.10317
-a_y: -3474.9482
-b_y: 578.351918
+a_x: 3658.868971
+b_x: 493
+a_y: -3468.089952
+b_y: 591.621936
 
 # Motor values to finger angles
 a_left: 0.002192
@@ -22,5 +22,12 @@ b_left: 1.027071
 a_right: 0.002203
 b_right: 0.325983
 
-hold_left: 0.80
-hold_right: 0.70
+hold_left: 0.40
+hold_right: 0.53
+
+# Topics To be recorded
+topics: {
+  topic2: "aruco_simple/result",
+  topic3: "object_position",
+  topic4: "Motor_value"
+}

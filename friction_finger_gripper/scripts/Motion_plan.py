@@ -29,7 +29,7 @@ for params, ns in paramlist:
     b_right = params['b_right']
     hold_pos_left = params['hold_left']
     hold_pos_right = params['hold_right']
-    VISUAL_SERVOING_ENABLE = params['visual_servoing']
+    # VISUAL_SERVOING_ENABLE = params['visual_servoing']
 
 
 
@@ -482,11 +482,18 @@ def Motion_planner():
     # else:
     #     print "Correction step failed"
 
+def Motion_planner_server():
+    rospy.init_node('Motion_planner')
+    mp = rospy.Service('Motion_planner', SendBool, Motion_planner)
+    rospy.spin()
+
+
 
 if __name__ == '__main__':
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    rospy.init_node('Control_loop')
-    hold_object(hold_pos_left, hold_pos_right)
-    Motion_planner()
-    rospy.spin()
+    Motion_planner_server()
+    # print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    # rospy.init_node('Control_loop')
+    # hold_object(hold_pos_left, hold_pos_right)
+    # Motion_planner()
+    # rospy.spin()
 

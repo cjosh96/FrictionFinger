@@ -77,6 +77,27 @@ class hand
             return -1;
         }
     }
+    
+    bool set_velocity(int motor_num, float v)
+    {
+	ros::NodeHandle n;
+	ros::service::waitForService("set_vel");
+	ros::ServiceClient client_velocity = n.serviceClient<common_msgs_gl::SendDoubleArray>("set_vel");
+	common_msgs_gl::SendDoubleArray srv;
+	srv.request.data = {motor_num, v};
+	
+	if (client_velocity.call(srv))
+	{
+		ROS_INFO("Velocity set");
+		return 1;	
+	}
+	else
+	{
+		ROS_INFO("Failure");
+		return -1;
+	}
+    }
+
 
     bool set_actuator_modes(int size, int modes[])
     {
@@ -385,13 +406,16 @@ class hand
 
     bool hold_object1(friction_finger_gripper::Holdcommand::Request &req, friction_finger_gripper::Holdcommand::Response &res)
     {
-        bool set_modes, send_pos1, send_pos2, set_friction_l, set_friction_r;
+        bool set_modes, send_pos1, send_pos2, set_friction_l, set_friction_r, send_torque, set_v_left, set_v_right;
         int modes1[] = {3, 3};
         set_modes = set_actuator_modes(2, modes1);
-
+	
+	set_v_left = set_velocity(0,10);
+	set_v_right = set_velocity(1,100);
+	
         send_pos1 = command_position(0, req.left);
         send_pos2 = command_position(1, req.right);
-
+	ros::Duration(15).sleep();
         if (finger_state != 3)
         {
             // Setting Friction Surfaces Left -> High, Right -> High
@@ -399,7 +423,11 @@ class hand
             set_friction_r = set_friction_right(true);
             finger_state = 3;
         }
-
+	
+	modes1[0] = 3;
+	modes1[1] = 0;
+	set_modes = set_actuator_modes(2, modes1);
+	send_torque = command_torque(1, 0.15);
         ros::Duration(1).sleep();
 
         if (send_pos1 && send_pos2)

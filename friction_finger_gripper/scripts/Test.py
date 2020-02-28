@@ -82,9 +82,12 @@ def slide_left_down(p):
 	set_friction_l = set_friction_right(0)
 	set_friction_r = set_friction_left(1)
 
-	send_torque = command_torque(1, 0.15)
-
+	send_v = set_velocity(0, 10)
 	send_pos = command_position(0, p)
+
+	send_torque = command_torque(1, 0.12)
+
+	
 
 
 def slide_left_up(p):
@@ -94,9 +97,12 @@ def slide_left_up(p):
 	set_friction_l = set_friction_right(0)
 	set_friction_r = set_friction_left(1)
 
-	send_torque = command_torque(0, 0.15)
-
+	send_v = set_velocity(1, 10)
 	send_pos = command_position(1, p)
+
+	send_torque = command_torque(0, 0.12)
+
+	
 
 def slide_right_down(p):
 	modes = [0, 3]
@@ -104,27 +110,27 @@ def slide_right_down(p):
 
 	set_friction_l = set_friction_right(1)
 	set_friction_r = set_friction_left(0)
-	send_v = set_velocity(1, 1)
+	
+	send_v = set_velocity(1, 10)
 	send_pos = command_position(1, p)
-	send_torque = command_torque(0, 0.15)
+	
+	send_torque = command_torque(0, 0.12)
 	
 	
 
 def slide_right_up(p):
-	start_time_set_modes = time.time()
 	modes = [3, 0]
+	
 	set_modes = set_actuator_modes(2, modes)
-	print 'set modes time', time.time()-start_time_set_modes
-	start_time_friction_surfaces = time.time()
+	
 	set_friction_l = set_friction_right(1)
 	set_friction_r = set_friction_left(0)
-	print 'friction surface time', time.time()-start_time_friction_surfaces
-	start_time_torque = time.time()
-	send_torque = command_torque(1, 0.15)
-	print 'set torque time', time.time()-start_time_torque
-	start_time_position = time.time()
+
+	send_v = set_velocity(0, 10)
 	send_pos = command_position(0, p)
-	print 'set position time', time.time()-start_time_position
+
+	send_torque = command_torque(1, 0.12)
+
 
 def setV(v):
 	modes = [1, 0]
@@ -136,7 +142,7 @@ def setV(v):
 
 if __name__ == '__main__':
 	
-	slide_right_down(0.4)
+	slide_left_up(0.4)
 	# modes = [3, 3]
 	# set_modes = set_actuator_modes(2, modes)
 	# send_v = set_velocity(1, 10)
