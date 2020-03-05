@@ -40,11 +40,21 @@ for params, ns in paramlist:
 
 def Hold_object_1(p1, p2):
 
-	print p1, p2, 12356
 	p = [p1, p2]
 	rospy.wait_for_service('Hold_object')
 	try:
 		client_hold = rospy.ServiceProxy('Hold_object', Holdcommand)
+		resp1 = client_hold(p1, p2)
+		return 1
+	except rospy.ServiceException, e:
+		return None
+
+def Home_position(p1, p2):
+
+	p = [p1, p2]
+	rospy.wait_for_service('Home_pos')
+	try:
+		client_hold = rospy.ServiceProxy('Home_pos', Holdcommand)
 		resp1 = client_hold(p1, p2)
 		return 1
 	except rospy.ServiceException, e:
@@ -59,7 +69,6 @@ def Visual_servoing():
 		return 1
 	except rospy.ServiceException, e:
 		print "Calling Visual servoing failed"
-
 
 def Motion_planner():
 
@@ -78,16 +87,18 @@ def publish_state():
 	rate = rospy.Rate(10)
 	pub.publish(start)
 	if (start == 0):
-		
-		Hold_object_1(0.4, 0.52)
+		# Home_position(0.35,0.45)
+		Hold_object_1(0.80, 0.52)
 		start = 1
-		# time.sleep(15)
+		time.sleep(1)
 		pub.publish(start)
 
 		if method == 1:
-			Motion_planner()
+			print 'motion planner started'
+			# Motion_planner()
 
 		elif method == 2:
+			print 'visual servoing started'
 			v = Visual_servoing()
 			if v== 1:
 				print 'reached'

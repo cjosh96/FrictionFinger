@@ -45,9 +45,14 @@ FINGER_WIDTH=1
 #Block_orientation=0
 Block_Position=[0,0]
 VISUAL_SERVOING_ENABLE=1
-VISUAL_SERVOING_TOLERANCE=1
+VISUAL_SERVOING_TOLERANCE=3
+
+sleep_time = 0.1
+angle_diff = -0.01
 
 global Block_orientation 
+global finger_state
+finger_state = -1
 Block_orientation = 0
 
 def angle_conversion(angle, flag):
@@ -61,7 +66,6 @@ def angle_conversion(angle, flag):
     # print("n_angle = ", n_angle)
     return (n_angle)
 
-
 def encoder_gripper_angle_conversion(enc,flag):
 
     if(flag==1):
@@ -70,6 +74,78 @@ def encoder_gripper_angle_conversion(enc,flag):
         theta= (enc - b_left)/a_left
     return theta
 
+######################################### FUNCTIONS TO SET ACTUATOR CONTROL MODES AND FRICTION SURFACES #####################################################
+def set_actuator_modes(size, modes):
+    rospy.wait_for_service("set_operating_mode")
+    try:
+        client_operating_mode = rospy.ServiceProxy('set_operating_mode', SendIntArray)
+        resp1 = client_operating_mode(modes)
+        return 1
+    except rospy.ServiceException, e:
+        print "Actuator modes service call failed"
+
+def command_position(num,position):
+    rospy.wait_for_service('cmd_pos_ind')
+    try:
+        client_position = rospy.ServiceProxy('cmd_pos_ind', SendDoubleArray)
+        resp1 = client_position([num, position])
+        return 1
+
+    except rospy.ServiceException, e:
+        print "Position Service call failed"
+
+def command_torque(num, torque):
+    rospy.wait_for_service('cmd_torque_ind')
+    try:
+        client_torque = rospy.ServiceProxy('cmd_torque_ind', SendDoubleArray)
+        resp1 = client_torque([num, torque])
+        return 1
+
+    except rospy.ServiceException, e:
+        print "Torque Service Call Failed"
+
+def set_velocity(num, velocity):
+    rospy.wait_for_service("set_vel")
+    try:
+        client_set_profile_velocity = rospy.ServiceProxy('set_vel', SendDoubleArray)
+        resp1 = client_set_profile_velocity([num, velocity])
+        return 1
+    except rospy.ServiceException, e:
+        print "Setting Velocity Failed"
+
+
+def set_friction_right(friction_surface):
+    rospy.wait_for_service('Friction_surface_Right')
+    try:
+        client_right_surface = rospy.ServiceProxy('Friction_surface_Right', SendBool)
+        resp1 = client_right_surface(friction_surface)
+        return 1
+
+    except rospy.ServiceException, e:
+        return None
+        # print "Right Friction Surface failed"
+
+def set_friction_left(friction_surface):
+    rospy.wait_for_service('Friction_surface_Left')
+    try:
+        client_left_surface = rospy.ServiceProxy('Friction_surface_Left', SendBool)
+        resp1 = client_left_surface(friction_surface)
+        return 1
+
+    except rospy.ServiceException, e:
+        return None
+        # print "Left Friction Surface Failed"
+
+
+def read_pos():
+    rospy.wait_for_service('read_pos')
+    try:
+        read_position_handler = rospy.ServiceProxy('read_pos', GetDoubleArray)
+        values = read_position_handler()
+        #print values.data
+        return values.data
+    except rospy.ServiceException, e:
+        print ("Service call failed: %s" % e)
 
 
 def finger_to_cartesian(L,R,A,th):
@@ -92,61 +168,67 @@ def hold_object(p1, p2):
         resp1 = hold(p1, p2)
     except rospy.ServiceException, e:
         print ("Service call failed: %s"%e)
+
+def release_object(p1, p2):
+    rospy.wait_for_service('Home_position')
+    try:
+        h = rospy.ServiceProxy('Home_position', Holdcommand)
+        resp1 = h(p1, p2)
+        return 1
+    except rospy.ServiceException, e:
+        return None
     
 
-def slide_left_finger_down(p):
-    # Call Left_Slide_Down(till left most position) Assume t1 = pi/6
-    rospy.wait_for_service('Slide_Left_Finger_Down')
-    try:
-        slide_left_down = rospy.ServiceProxy('Slide_Left_Finger_Down', PositionCommand)
-        resp1 = slide_left_down(p)
-    except rospy.ServiceException, e:
-        print ("Service call failed: %s" % e)
+# def slide_left_finger_down(p):
+#     # Call Left_Slide_Down(till left most position) Assume t1 = pi/6
+#     rospy.wait_for_service('Slide_Left_Finger_Down')
+#     try:
+#         slide_left_down = rospy.ServiceProxy('Slide_Left_Finger_Down', PositionCommand)
+#         resp1 = slide_left_down(p)
+#     except rospy.ServiceException, e:
+#         print ("Service call failed: %s" % e)
+
+# def slide_left_finger_up(p):
+#     rospy.wait_for_service('Slide_Left_Finger_Up')
+#     try:
+#         slide_left_up = rospy.ServiceProxy('Slide_Left_Finger_Up', PositionCommand)
+#         resp1 = slide_left_up(p)
+#     except rospy.ServiceException, e:
+#         print ("Service call failed: %s" % e)
 
 
-def slide_left_finger_up(p):
-    rospy.wait_for_service('Slide_Left_Finger_Up')
-    try:
-        slide_left_up = rospy.ServiceProxy('Slide_Left_Finger_Up', PositionCommand)
-        resp1 = slide_left_up(p)
-    except rospy.ServiceException, e:
-        print ("Service call failed: %s" % e)
+# def slide_right_finger_down(p):
+#     # Call Left_Slide_Down(till left most position) Assume t1 = pi/6
+#     rospy.wait_for_service('Slide_Right_Finger_Down')
+#     try:
+#         slide_right_down = rospy.ServiceProxy('Slide_Right_Finger_Down', PositionCommand)
+#         resp1 = slide_right_down(p)
+#     except rospy.ServiceException, e:
+#         print ("Service call failed: %s" % e)
 
+# def slide_right_finger_up(p):
+#     rospy.wait_for_service('Slide_Right_Finger_Up')
+#     try:
+#         slide_right_up = rospy.ServiceProxy('Slide_Right_Finger_Up', PositionCommand)
+#         resp1 = slide_right_up(p)
+#     except rospy.ServiceException, e:
+#         print ("Service call failed: %s" % e)
 
-def slide_right_finger_down(p):
-    # Call Left_Slide_Down(till left most position) Assume t1 = pi/6
-    rospy.wait_for_service('Slide_Right_Finger_Down')
-    try:
-        slide_right_down = rospy.ServiceProxy('Slide_Right_Finger_Down', PositionCommand)
-        resp1 = slide_right_down(p)
-    except rospy.ServiceException, e:
-        print ("Service call failed: %s" % e)
+# def rotate_object_anticlockwise(p):
+#     rospy.wait_for_service('Rotate_anticlockwise')
+#     try:
+#         rotate_anti = rospy.ServiceProxy('Rotate_anticlockwise',PositionCommand)
+#         resp1 = rotate_anti(p)
+#     except rospy.ServiceException, e:
+#         print ("Service call failed: %s"%e)
 
-
-def slide_right_finger_up(p):
-    rospy.wait_for_service('Slide_Right_Finger_Up')
-    try:
-        slide_right_up = rospy.ServiceProxy('Slide_Right_Finger_Up', PositionCommand)
-        resp1 = slide_right_up(p)
-    except rospy.ServiceException, e:
-        print ("Service call failed: %s" % e)
-
-def rotate_object_anticlockwise(p):
-    rospy.wait_for_service('Rotate_anticlockwise')
-    try:
-        rotate_anti = rospy.ServiceProxy('Rotate_anticlockwise',PositionCommand)
-        resp1 = rotate_anti(p)
-    except rospy.ServiceException, e:
-        print ("Service call failed: %s"%e)
-
-def rotate_object_clockwise(p): #0.35
-    rospy.wait_for_service('Rotate_clockwise')
-    try:
-        Rotate_clockwise = rospy.ServiceProxy('Rotate_clockwise',PositionCommand)
-        resp1 = Rotate_clockwise(p)
-    except rospy.ServiceException, e:
-        print ("Service call failed: %s"%e)
-
+# def rotate_object_clockwise(p): #0.35
+#     rospy.wait_for_service('Rotate_clockwise')
+#     try:
+#         Rotate_clockwise = rospy.ServiceProxy('Rotate_clockwise',PositionCommand)
+#         resp1 = Rotate_clockwise(p)
+#     except rospy.ServiceException, e:
+#         print ("Service call failed: %s"%e)
 
 def read_pos():
     rospy.wait_for_service('read_pos')
@@ -158,8 +240,6 @@ def read_pos():
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
 
-
-
 def Correction_step(goal_x,goal_y,Tol):
     rospy.wait_for_service('Visual_servoing')
     try:
@@ -168,8 +248,6 @@ def Correction_step(goal_x,goal_y,Tol):
         return resp
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
-
-
 
 def orientation_callback(msg):
      global Block_orientation
@@ -200,11 +278,13 @@ def Call_visual_servo(goal_x,goal_y,Tol):
             print "Action position correction failed"
 
 class Finger:
+
     def __init__(self):
         self.pub_enable=1
         rospy.Subscriber("/object_position", Point, self.callback)
         self.Motor_value_pub=rospy.Publisher('Finger_motor_position',Motor_position,queue_size=10000)
         print 'object created'
+
     def callback(self, msg):
 
         self.x = msg.x * 100.
@@ -218,10 +298,145 @@ class Finger:
 
     def stop_publishing_Motor(self):
         self.pub_enable=0
-    
+
     def start_publishing_Motor(self):
         self.pub_enable=1
+
+################################# SLIDING AND ROTATION ACTIONS #######################################################
+
+def slide_left_finger_down(p):
+    global finger_state
+    if finger_state != 1:
+        set_friction_l = set_friction_right(1)
+        set_friction_r = set_friction_left(1)
         
+        modes = [3, 0]          # Set modes - Left -> Position, Right -> Torque (3 -> Position, 0 -> Torque)
+        set_modes = set_actuator_modes(2, modes)
+        # send_pos = command_position(0, p)
+        send_torque = command_torque(1, 0.15)
+        time.sleep(0.5)
+        set_friction_l = set_friction_right(1)
+        set_friction_r = set_friction_left(0)
+        time.sleep(1)
+        finger_state = 1
+        # send_v = set_velocity(0, 10)
+    theta = read_pos()
+    
+    for t1 in np.arange(theta[0], p, angle_diff):
+        send_pos = command_position(0, t1)
+        send_torque = command_torque(1, 0.15)
+        time.sleep(sleep_time)
+
+def slide_left_finger_up(p):
+    global finger_state
+    if finger_state != 2:
+        set_friction_l = set_friction_right(1)
+        set_friction_r = set_friction_left(1)
+        
+        modes = [0, 3]
+        set_modes = set_actuator_modes(2, modes)
+        time.sleep(0.5)
+        # send_pos = command_position(0, p)
+        send_torque = command_torque(1, 0.15)
+        set_friction_l = set_friction_right(1)
+        set_friction_r = set_friction_left(0)
+        time.sleep(1)
+        finger_state = 2
+        # send_v = set_velocity(1, 10)
+
+    theta = read_pos()
+    for t2 in np.arange(theta[1], p, angle_diff):
+        send_pos = command_position(1, t2)
+        send_torque = command_torque(0, 0.15)   
+        time.sleep(sleep_time)
+
+def slide_right_finger_down(p):
+    global finger_state
+    if finger_state != 3:
+        set_friction_l = set_friction_right(1)
+        set_friction_r = set_friction_left(1)
+        
+        modes = [0, 3]
+        # set_modes = set_actuator_modes(2, modes)
+        # send_pos = command_position(0, p)
+
+        send_torque = command_torque(1, 0.15)
+        time.sleep(0.5)
+        set_friction_l = set_friction_right(0)
+        set_friction_r = set_friction_left(1)
+        time.sleep(1)
+        finger_state = 3
+        # send_v = set_velocity(1, 10)
+
+    theta = read_pos()
+    for t2 in np.arange(theta[1], p, angle_diff):
+        send_pos = command_position(1, t2)
+        send_torque = command_torque(0, 0.15)
+        time.sleep(sleep_time)
+
+def slide_right_finger_up(p):
+    global finger_state
+    if finger_state != 4:
+        set_friction_l = set_friction_right(1)
+        set_friction_r = set_friction_left(1)
+        
+        modes = [3, 0]
+        set_modes = set_actuator_modes(2, modes)
+        # send_pos = command_position(0, p)
+        send_torque = command_torque(1, 0.15)
+        time.sleep(0.5)
+        set_friction_l = set_friction_right(0)
+        set_friction_r = set_friction_left(1)
+        time.sleep(1)
+        finger_state = 4
+        # send_v = set_velocity(0, 10)
+    theta = read_pos()
+    for t1 in np.arange(theta[0], p, angle_diff):
+        send_pos = command_position(0, t1)
+        send_torque = command_torque(1, 0.15)
+        time.sleep(sleep_time)
+
+def rotate_object_clockwise(p):
+    global finger_state
+    if finger_state != 5:
+        set_friction_l = set_friction_right(1)
+        set_friction_r = set_friction_left(1)
+        
+        modes = [3, 0]
+        set_modes = set_actuator_modes(2, modes)
+        send_torque = command_torque(1, 0.15)
+        time.sleep(0.5)
+        set_friction_l = set_friction_right(1)
+        set_friction_r = set_friction_left(1)
+        time.sleep(1)
+        finger_state = 5
+
+    theta = read_pos()
+    for t1 in np.arange(theta[0], p, angle_diff):
+        send_pos = command_position(0, t1)
+        send_torque = command_torque(1, 0.15)
+        time.sleep(sleep_time)
+    
+def rotate_object_anticlockwise(p):
+    global finger_state
+    if finger_state != 6:
+        set_friction_l = set_friction_right(1)
+        set_friction_r = set_friction_left(1)
+        modes = [0, 3]
+        set_modes = set_actuator_modes(2, modes)
+        send_torque = command_torque(1, 0.15)
+        time.sleep(0.5)
+        set_modes = set_actuator_modes(2, modes)
+        set_friction_l = set_friction_right(1)
+        set_friction_r = set_friction_left(1)
+        time.sleep(1)
+        finger_state = 6
+
+    theta = read_pos()
+    for t2 in np.arange(theta[1], p, angle_diff):
+        send_pos = command_position(1, t2)
+        send_torque = command_torque(0, 0.15)
+        time.sleep(sleep_time)
 
 def Motion_planner():
     global VISUAL_SERVOING_ENABLE
@@ -352,20 +567,20 @@ def Motion_planner():
                 theta=read_pos()
                 
                
-                Motor_value=theta[1]-0.02
+                Motor_value=theta[1]-0.01
                 print "Motor_value",Motor_value
                 rotate_object_anticlockwise(Motor_value)
                 finger_angle=encoder_gripper_angle_conversion(theta[1],1)
                 print "Block_orientation=",Block_orientation
                 print "Finger_angle=",finger_angle
-                print "Diff",(abs(Block_orientation-finger_angle))%90
-                condition1=(abs(Block_orientation-finger_angle))%90<7
-                condition2=((abs(Block_orientation-finger_angle)))%90>83
-                condition3=(abs(Block_orientation+finger_angle))%90<7
-                condition4= (abs(Block_orientation+finger_angle))%90>83
+                print "Diff",(abs(Block_orientation-finger_angle))%60
+                condition1=(abs(Block_orientation-finger_angle))%60<10
+                condition2=((abs(Block_orientation-finger_angle)))%60>80
+                condition3=(abs(Block_orientation+finger_angle))%60<10
+                condition4= (abs(Block_orientation+finger_angle))%60>80
                 condition5=Block_orientation<=180
                 condition6=Block_orientation>=180
-                Right_Limit_condition=Motor_value>=0.6
+                Right_Limit_condition=Motor_value>=0.2
                 print "c1=",condition1
                 print "c2=",condition2
                 print "c3=",condition3
@@ -373,8 +588,12 @@ def Motion_planner():
                 print "c5=",condition5
                 print "c6=",condition6
                 if ((condition1 or condition2) and condition6 and Right_Limit_condition):
+                    theta=read_pos()
+                    rotate_object_clockwise(theta[0] - 0.02)
                     break
                 if ((condition3 or condition4) and condition5 and Right_Limit_condition):
+                    theta=read_pos()
+                    rotate_object_clockwise(theta[0] - 0.02)
                     break
 
 
@@ -405,26 +624,31 @@ def Motion_planner():
                 Motor_value=theta[0]-0.02
                 #print "Motor_value",Motor_value
                 rotate_object_clockwise(Motor_value)
-                finger_angle=encoder_gripper_angle_conversion(theta[1],1)
+                finger_angle=encoder_gripper_angle_conversion(theta[0],1)
                 print "Block_orientation=",Block_orientation
                 print "Finger_angle=",finger_angle
-                print "Diff",(abs(Block_orientation-finger_angle))%90
-                condition1=(abs(Block_orientation-finger_angle))%90<7
-                condition2=((abs(Block_orientation-finger_angle)))%90>83
-                condition3=(abs(Block_orientation+finger_angle))%90<7
-                condition4= (abs(Block_orientation+finger_angle))%90>83
+                print "Diff",(abs(Block_orientation-finger_angle))%60
+                condition1=(abs(Block_orientation-finger_angle))%60<20
+                condition2=((abs(Block_orientation-finger_angle)))%60>70
+                condition3=(abs(Block_orientation+finger_angle))%60<20
+                condition4= (abs(Block_orientation+finger_angle))%60>70
                 condition5=Block_orientation<=180
                 condition6=Block_orientation>=180
-                Left_Limit_condition=Motor_value>=0.65
+                Left_Limit_condition=Motor_value>=0.2
                 print "c1=",condition1
                 print "c2=",condition2
                 print "c3=",condition3
                 print "c4=",condition4
                 print "c5=",condition5
                 print "c6=",condition6
-                if ((condition1 or condition2) and condition6 and Left_Limit_condition):
+                print "Left_Limit_condition", Left_Limit_condition
+                if ((condition1 or condition2) and condition5 and Left_Limit_condition):
+                    theta=read_pos()
+                    rotate_object_anticlockwise(theta[1] - 0.02)
                     break
-                if ((condition3 or condition4) and condition5 and Left_Limit_condition):
+                if ((condition3 or condition4) and condition6 and Left_Limit_condition):
+                    theta=read_pos()
+                    rotate_object_anticlockwise(theta[1] - 0.02)
                     break
 
 
@@ -482,18 +706,30 @@ def Motion_planner():
     # else:
     #     print "Correction step failed"
 
-def Motion_planner_server():
-    rospy.init_node('Motion_planner')
-    mp = rospy.Service('Motion_planner', SendBool, Motion_planner)
-    rospy.spin()
+# def Motion_planner_server():
+#     rospy.init_node('Motion_planner')
+#     mp = rospy.Service('Motion_planner', SendBool, Motion_planner)
+#     rospy.spin()
 
+def Hold_object_1(p1, p2):
+
+    p = [p1, p2]
+    rospy.wait_for_service('Hold_object')
+    try:
+        client_hold = rospy.ServiceProxy('Hold_object', Holdcommand)
+        resp1 = client_hold(p1, p2)
+        return 1
+    except rospy.ServiceException, e:
+        return None
 
 
 if __name__ == '__main__':
-    Motion_planner_server()
-    # print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    # rospy.init_node('Control_loop')
-    # hold_object(hold_pos_left, hold_pos_right)
-    # Motion_planner()
-    # rospy.spin()
+    # Motion_planner_server()
+    print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    rospy.init_node('Control_loop')
+    hold_object(0.72, 0.54)
+    Motion_planner()
+    time.sleep(5)
+    release_object(0.65, 0.40)
+    rospy.spin()
 

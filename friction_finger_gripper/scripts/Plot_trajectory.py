@@ -72,7 +72,7 @@ class trajectory:
         for i in range(2, length - 1):
             # print self.X[0], self.Y[0]
             # print self.X[i], self.Y[i]
-            if i < 10:
+            if i < 100:
                 continue
             if colour[i] == 1:
                 cv2.line(self.cv_image, (self.X[i], self.Y[i]), (self.X[i - 1], self.Y[i - 1]), (0, 0, 255), 5, lineType=8)
@@ -136,9 +136,9 @@ class trajectory:
         if (act.data == 6):
             self.action = 'Visual Servoing - Left Slide down'
         if (act.data == 7):
-            self.action = 'Visual Servoing - Right Slide down'
-        if (act.data == 8):
             self.action = 'Visual Servoing - Left Slide up'
+        if (act.data == 8):
+            self.action = 'Visual Servoing - Right Slide down'
         if (act.data == 9):
             self.action = 'Visual Servoing - Right Slide up'
 

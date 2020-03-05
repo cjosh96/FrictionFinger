@@ -1,7 +1,7 @@
 start_x: 0.0288
-start_y: 0.0580
-end_x: 0.025
-end_y: 0.10
+start_y: 0.0680
+end_x: -0.007758
+end_y: 0.09518
 theta_goal: 0
 
 # Method
@@ -17,17 +17,19 @@ a_y: -3468.089952
 b_y: 591.621936
 
 # Motor values to finger angles
-a_left: 0.002192
-b_left: 1.027071
-a_right: 0.002203
-b_right: 0.325983
+a_left: -0.002208
+b_left: 1.038487
+a_right: 0.002177
+b_right: 0.307405
 
 hold_left: 0.40
 hold_right: 0.53
 
 # Topics To be recorded
 topics: {
-  topic2: "aruco_simple/result",
+  
+  topic2: "object_trajectory",
   topic3: "object_position",
-  topic4: "Motor_value"
+  topic4: "Finger_motor_position",
+  topic5: "Action"
 }

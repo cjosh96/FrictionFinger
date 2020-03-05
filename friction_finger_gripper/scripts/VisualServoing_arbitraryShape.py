@@ -19,19 +19,40 @@ import roslib
 roslib.load_manifest("rosparam")
 import rosparam
 
-
 TOLERANCE=0.3
 MAX_ITERATIONS=40
 JACOBIAN_STEPS=1
 
+sleep_time = 0.1
+angle_diff = -0.01
+pos_mode = 3
+torque_mode = 0
+torque = 0.15
+no_of_fingers = 2
+surface_change_time = 0.5
+high_friction = 1
+low_friction = 0
+
+
+# Parameters for converting angles to encoder values
+for params, ns in paramlist:
+	rosparam.upload_params(ns,params)
+	a_left = params['a_left']
+	b_left = params['b_left']
+	a_right = params['a_right']
+	b_right = params['b_right']
+
+
+
+############################################### Calculate Geometric Parameters Required for FK, IK #########################################################
 # Geometric Parameters
 wp = 6.2
-w0 = 1.5
+w0 = 1.6
 fw = 1.8
 
 # Vertices of the shape
-X_vertices = np.array([w0/2, w0, w0/2, -w0/2, -w0, -w0])
-Y_vertices = np.array([float(w0*sqrt(3)/2), 0, -float(w0*sqrt(3)/2), -float(w0*sqrt(3)/2), 0, float(w0*sqrt(3)/2)])
+X_vertices = np.array([w0/2, w0, w0/2, -w0/2, -w0])
+Y_vertices = np.array([float(w0*sqrt(3)/2), 0, -float(w0*sqrt(3)/2), -float(w0*sqrt(3)/2), 0])
 n = X_vertices.shape[0]
 contact = 1
 
@@ -64,18 +85,10 @@ else:
 paramlist = rosparam.load_file('/home/gsathyanarayanan/finger_ws_backup/src/friction_finger_gripper/config/beg.yaml')
 
 
-# Parameters for converting angles to encoder values
-for params, ns in paramlist:
-	rosparam.upload_params(ns,params)
-	a_left = params['a_left']
-	b_left = params['b_left']
-	a_right = params['a_right']
-	b_right = params['b_right']
-
 
 
 ######################################### FUNCTIONS TO SET ACTUATOR CONTROL MODES AND FRICTION SURFACES #####################################################
-def set_actuator_modes(size, modes):
+def set_actuator_modes(modes):
 	rospy.wait_for_service("set_operating_mode")
 	try:
 		client_operating_mode = rospy.ServiceProxy('set_operating_mode', SendIntArray)
@@ -84,8 +97,7 @@ def set_actuator_modes(size, modes):
 	except rospy.ServiceException, e:
 		print "Actuator modes service call failed"
 
-
-def command_position(num,position):
+def command_position(num, position):
 	rospy.wait_for_service('cmd_pos_ind')
 	try:
 		client_position = rospy.ServiceProxy('cmd_pos_ind', SendDoubleArray)
@@ -94,7 +106,6 @@ def command_position(num,position):
 
 	except rospy.ServiceException, e:
 		print "Position Service call failed"
-
 
 def command_torque(num, torque):
 	rospy.wait_for_service('cmd_torque_ind')
@@ -114,7 +125,6 @@ def set_velocity(num, velocity):
 		return 1
 	except rospy.ServiceException, e:
 		print "Setting Velocity Failed"
-
 
 def set_friction_right(friction_surface):
 	rospy.wait_for_service('Friction_surface_Right')
@@ -138,7 +148,6 @@ def set_friction_left(friction_surface):
 		return None
 		# print "Left Friction Surface Failed"
 
-
 def read_pos():
     rospy.wait_for_service('read_pos')
     try:
@@ -148,6 +157,23 @@ def read_pos():
         return values.data
     except rospy.ServiceException, e:
         print ("Service call failed: %s" % e)
+        def release_object(p1, p2):
+	rospy.wait_for_service('Home_position')
+	try:
+		h = rospy.ServiceProxy('Home_position', Home_position)
+		resp1 = h(p1, p2)
+		return 1
+	except rospy.ServiceException, e:
+		return None
+
+def release_object(p1, p2):
+	rospy.wait_for_service('Home_position')
+	try:
+		h = rospy.ServiceProxy('Home_position', Home_position)
+		resp1 = h(p1, p2)
+		return 1
+	except rospy.ServiceException, e:
+		return None
 
 
 ############################################## ANGLES, ENCODER VALUES CONVERSION ################################################
@@ -185,7 +211,7 @@ class visual_servoing:
 
 		# Desired Coordinates
 		self.X_d = np.array([0,0])
-		self.theta_d=0
+		self.theta_d = 0
 
 		self.x = None
 		self.y = None
@@ -193,6 +219,7 @@ class visual_servoing:
 		self.t2 = None
 		self.d1 = None
 		self.d2 = None
+		
 		self.action = None
 
 		self.contact_right = 0
@@ -206,107 +233,149 @@ class visual_servoing:
 		#loop rate
 		rate = rospy.Rate(20)
 		
-
 	def goal_update(self, goal_x,goal_y,goal_theta):
 		self.X_d = np.array([goal_x, goal_y])
 		self.theta_d = goal_theta
-
 
 	################################### OBJECT POSITION AND ORIENTATION ##############################################
 	def callbackObjectPosition(self, msg):
 		self.x = msg.x * 100.
 		self.y = msg.y * 100.
-		#print 'position =', self.x, self.y
-		
-		values=Motor_position()
-		val=read_pos()
-		values.Left=val[0]
-		values.Right=val[1]
+
+		values = Motor_position()
+		val = read_pos()
+		values.Left = val[0]
+		values.Right = val[1]
 		self.Motor_value_pub.publish(values)
 		
-
 	def callbackObjectOrientation(self, msg):
 		#Radians to degree conversion(Values lies between -180 to 180)
 		if(msg.data>=0 and msg.data<=3.14):
-			self.Block_orientation=msg.data*180/np.pi
+			self.Block_orientation = msg.data*180/np.pi
 		else:
-			self.Block_orientation=180+ abs(msg.data)*180/np.pi
-
+			self.Block_orientation = 180+ abs(msg.data)*180/np.pi
 
 	def listener_object_pose(self):
 		rospy.Subscriber("/object_position", Point, self.callbackObjectPosition)
 		rospy.Subscriber("/object_orientation", Float32, self.callbackObjectOrientation)
 
-
 	################################# SLIDING AND ROTATION ACTIONS #######################################################
 
 	def slide_left_down(self, p):
 		if self.finger_state != 1:
-			modes = [3, 0]			# Set modes - Left -> Position, Right -> Torque (3 -> Position, 0 -> Torque)
-			set_modes = set_actuator_modes(2, modes)
-			set_friction_l = set_friction_right(1)
-			set_friction_r = set_friction_left(0)
-			time.sleep(1)
+			self.pub.publish(self.finger_state + 6)
+			# To prevent the object from falling down both surfaces are set to high friction
+			if self.finger_state != 2:
+				set_friction_l = set_friction_right(high_friction)
+				set_friction_r = set_friction_left(high_friction)
+				time.sleep(surface_change_time)
+			
+			modes = [pos_mode, torque_mode]			
+			set_modes = set_actuator_modes(modes)
+			# send_pos = command_position(0, p)
+			# send_torque = command_torque(1, torque)
+			set_friction_l = set_friction_right(high_friction)
+			set_friction_r = set_friction_left(low_friction)
+			time.sleep(surface_change_time)
 			self.finger_state = 1
-			send_v = set_velocity(0, 10)
+			# send_v = set_velocity(0, 10)		# Remove if not needed
 		send_pos = command_position(0, p)
-		send_torque = command_torque(1, 0.12)
+		send_torque = command_torque(1, torque)
 
 	def slide_left_up(self, p):
-		
+		self.pub.publish(self.finger_state + 6)
 		if self.finger_state != 2:
-			modes = [0, 3]
-			set_modes = set_actuator_modes(2, modes)
-			set_friction_l = set_friction_right(1)
-			set_friction_r = set_friction_left(0)
-			time.sleep(1)
+			# To prevent the object from falling down both surfaces are set to high friction
+			if self.friction_state != 1:
+				set_friction_l = set_friction_right(high_friction)
+				set_friction_r = set_friction_left(high_friction)
+				time.sleep(surface_change_time)
+			
+			modes = [torque_mode, pos_mode]
+			set_modes = set_actuator_modes(modes)
+			# send_pos = command_position(0, p)
+			# send_torque = command_torque(1, torque)
+			set_friction_l = set_friction_right(high_friction)
+			set_friction_r = set_friction_left(low_friction)
+			time.sleep(surface_change_time)
 			self.finger_state = 2
-			send_v = set_velocity(1, 10)
+			# send_v = set_velocity(1, 10)		# Remove if not needed
 		send_pos = command_position(1, p)
-		send_torque = command_torque(0, 0.12)
-		
+		send_torque = command_torque(0, torque)	
 
 	def slide_right_down(self, p):
-		
+		self.pub.publish(self.finger_state + 6)
 		if self.finger_state != 3:
-			modes = [0, 3]
-			set_modes = set_actuator_modes(2, modes)
-			set_friction_l = set_friction_right(0)
-			set_friction_r = set_friction_left(1)
-			time.sleep(1)
+			# To prevent the object from falling down both surfaces are set to high friction
+			if self.finger_state != 4:
+				set_friction_l = set_friction_right(high_friction)
+				set_friction_r = set_friction_left(high_friction)
+				time.sleep(surface_change_time)
+			
+			modes = [torque_mode, pos_mode]
+			set_modes = set_actuator_modes(modes)
+			# send_pos = command_position(0, p)
+			# send_torque = command_torque(1, torque)
+			set_friction_l = set_friction_right(low_friction)
+			set_friction_r = set_friction_left(high_friction)
+			time.sleep(surface_change_time)
 			self.finger_state = 3
-			send_v = set_velocity(1, 10)
+			# send_v = set_velocity(1, 10)
+
 		send_pos = command_position(1, p)
-		send_torque = command_torque(0, 0.12)
-		
+		send_torque = command_torque(0, torque)
 
 	def slide_right_up(self, p):
-		
+		self.pub.publish(self.finger_state + 6)
 		if self.finger_state != 4:
-			modes = [3, 0]
-			set_modes = set_actuator_modes(2, modes)
-			set_friction_l = set_friction_right(0)
-			set_friction_r = set_friction_left(1)
-			time.sleep(1)
+			if self.finger_state != 3:
+				set_friction_l = set_friction_right(high_friction)
+				set_friction_r = set_friction_left(high_friction)
+				time.sleep(surface_change_time)
+			modes = [pos_mode, torque_mode]
+			set_modes = set_actuator_modes(modes)
+			# send_pos = command_position(0, p)
+			# send_torque = command_torque(1, 0.15)
+			set_friction_l = set_friction_right(low_friction)
+			set_friction_r = set_friction_left(high_friction)
+			time.sleep(surface_change_time)
 			self.finger_state = 4
-			send_v = set_velocity(0, 10)
+			# send_v = set_velocity(0, 10)
 		send_pos = command_position(0, p)
-		send_torque = command_torque(1, 0.12)
+		send_torque = command_torque(1, torque)
+
+	def rotate_object_clockwise(self, p):
+		if self.finger_state != 5:
+			set_friction_l = set_friction_right(1)
+			set_friction_r = set_friction_left(1)
+			modes = [pos_mode, torque_mode]
+			set_modes = set_actuator_modes(modes)
+			# send_torque = command_torque(1, 0.15)
+			time.sleep(surface_change_time)
+			self.finger_state = 5
+
+		theta = read_pos()
+		for t1 in np.arange(theta[0], p, angle_diff):
+			send_pos = command_position(0, t1)
+			send_torque = command_torque(1, torque)
+			time.sleep(sleep_time)
 
 	def rotate_object_anticlockwise(self, p):
-		if self.finger_state != 5:
-			modes = [3, 0]
-			set_modes = set_actuator_modes(2, modes)
-			set_friction_left = set_friction_right(1)
-			set_friction_right = set_friction_left(1)
-			send_v = set_velocity(0, 10)
-		    time.sleep(1)
-		    self.finger_state = 5
+		if self.finger_state != 6:
+			set_friction_l = set_friction_right(high_friction)
+			set_friction_r = set_friction_left(high_friction)
+			modes = [torque_mode, pos_mode]
+			set_modes = set_actuator_modes(modes)
+			# send_torque = command_torque(1, torque)
+			time.sleep(surface_change_time)
+			self.finger_state = 6
 
-
-		send_pos = command_position(0, p)
-		send_torque = command_torque(1, 0.12)
-
+		theta = read_pos()
+		for t2 in np.arange(theta[1], p, angle_diff):
+			send_pos = command_position(1, t2)
+			send_torque = command_torque(0, torque)
+			time.sleep(sleep_time)
+			    
     ################################# FORWARD KINEMATICS CALCULATION #####################################################
 	def translateLeft(self):
 
@@ -321,7 +390,6 @@ class visual_servoing:
 
 		self.d1 = sqrt((coords[0, contact_left] - wp)**2 + coords[1, contact_left]**2 -fw**2)
 		self.t1 = alpha + np.arctan2(fw, self.d1)
-
 
 	def translateRight(self):
 
@@ -338,52 +406,7 @@ class visual_servoing:
 		self.d2 = sqrt((coords[0, self.contact_right] - wp)**2 + coords[1, self.contact_right]**2 - fw**2)
 		self.t2 = alpha - np.arctan2(fw, self.d2)
 
-
-	'''
-
-    #################### Solving using Inverse kinematics using Symbolic Variables ####################################
-    
-    def ik_leftFinger(self):
-        t2_sol, d2_sol = symbols('t2_sol d2_sol')
-        eqn1 = (d2_sol + self.w0 / 2.) * cos(t2_sol) - (self.fw + self.w0 / 2.) * sin(t2_sol)
-        eqn2 = (d2_sol + self.w0 / 2.) * sin(t2_sol) + (self.fw + self.w0 / 2.) * cos(t2_sol)
-        eqn3 = (self.x - self.wp)**2 + self.y**2 - eqn1**2 - eqn2**2
-        sold2 = solve(eqn3, d2_sol)
-        solt2 = solve(eqn1.subs(d2_sol, sold2[1]) - (self.x - self.wp), t2_sol)
-        print 'd2, t2 = ', sold2[1], solt2[1]
-        d2v = np.array([sold2[1] * cos(solt2[1]), sold2[1] * sin(solt2[1])])
-        w0v = np.array([self.w0 * sin(solt2[1]), -self.w0 * cos(solt2[1])])
-        wpv = np.array([self.wp, 0.])
-        f1v = np.array([self.fw * sin(solt2[1]), -self.fw * cos(solt2[1])])
-        av = d2v - f1v - w0v + wpv
-
-        self.d1 = sqrt(float((av * av).sum() - self.fw * self.fw))
-        self.t1 = np.arctan2(float(av[1]), float(av[0])) + np.arctan2(float(self.fw), float(self.d1))
-        self.d2 = float(sold2[1])
-        self.t2 = float(solt2[1])
-
-
-    def ik_rightFinger(self):
-        t1_sol, d1_sol = symbols('t1_sol d1_sol')
-        eqn1 = (d1_sol + self.w0 / 2.) * cos(t1_sol) + (self.fw + self.w0 / 2.) * sin(t1_sol)
-        eqn2 = (d1_sol + self.w0 / 2.) * sin(t1_sol) - (self.fw + self.w0 / 2.) * cos(t1_sol)
-        eqn3 = self.x**2 + self.y**2 - eqn1**2 - eqn2**2
-        sold1 = solve(eqn3, d1_sol)
-        solt1 = solve(eqn1.subs(d1_sol, sold1[1]) - self.x, t1_sol)
-        print 't2, d2 = ', sold1[1], solt1[1]
-        d1v = np.array([sold1[1] * cos(solt1[1]), sold1[1] * sin(solt1[1])])
-        w0v = np.array([self.w0 * sin(solt1[1]), -self.w0 * cos(solt1[1])])
-        wpv = np.array([self.wp, 0.])
-        f1v = np.array([self.fw * sin(solt1[1]), -self.fw * cos(solt1[1])])
-        av = d1v + f1v + w0v - wpv
-        self.t1 = float(solt1[1])
-        self.d1 = float(sold1[1])
-        self.d2 = sqrt((av * av).sum() - self.fw * self.fw)
-        self.t2 = np.arctan2(float(av[1]), float(av[0])) - np.arctan2(float(self.fw), float(self.d2))
-
-	'''
     ####################### Solving Inverse Kinematics Numerically ####################################
-
 
 	##### INVERSE KINEMATICS FOR SLIDING ALONG THE RIGHT FINGER #####
 	def left_equations_d(self, variables):
@@ -493,38 +516,100 @@ class visual_servoing:
 		self.t2 = beta[0]	
 		self.d2 = sqrt((coords[0, self.contact_right] - wp)**2 + coords[1, self.contact_right]**2 - fw**2)
 		print 'right ', self.d1, self.d2, self.t1, self.t2
+	
+	def anticlockwise(self):
 
+		theta= read_pos()
+		Motor_value = theta[1]
+		'''
+		while Motor_value > 0.60:
+			slide_left_finger_up(Motor_value)
+			theta= read_pos()
+			Motor_value = theta[1] - 0.05
+	            
+		'''
+
+		print "inside anticlockwise"
+		self.action = 5
+		self.pub.publish(self.action)
+		Not_done=1
+		#while(Not_done):
+			#self.ik_rightFinger()
+
+	        '''
+	        if (self.t2<0.8):
+	        '''
+	        
+		theta= read_pos()
+		Motor_value = theta[0] - 0.05
+
+		self.rotate_object_clockwise(Motor_value)
+		while(1):
+			theta= read_pos()
+			Motor_value = theta[0] - 0.02
+			self.rotate_object_clockwise(Motor_value)
+			finger_angle = encoder_gripper_angle_conversion(theta[1],1)
+			print "Block_orientation=", self.Block_orientation
+			print "Finger_angle=",finger_angle
+			print "Diff",(abs(self.Block_orientation-finger_angle))%50
+			condition1 = (abs(self.Block_orientation-finger_angle))%50<20
+			condition2 = ((abs(self.Block_orientation-finger_angle)))%50>80
+			condition3 = (abs(self.Block_orientation+finger_angle))%50<20
+			condition4 = (abs(self.Block_orientation+finger_angle))%50>80
+			condition5 = self.Block_orientation<=180
+			condition6 = self.Block_orientation>=180
+			Left_Limit_condition = Motor_value>=0.20
+			print "c1=",condition1
+			print "c2=",condition2
+			print "c3=",condition3
+			print "c4=",condition4
+			print "c5=",condition5
+			print "c6=",condition6
+	            
+			if ((condition1 or condition2) and condition6 and Left_Limit_condition):
+				break
+			if ((condition3 or condition4) and condition5 and Left_Limit_condition):
+				break
+	
 	def clockwise(self):
+		theta= read_pos()
+		Motor_value = theta[0]
+		print "inside clockwise"
+		self.action = 4
+		self.pub.publish(self.action)
+		# global Block_orientation
+		Not_done=1
+		theta=read_pos()
+		Motor_value=theta[1]-0.1
 
-		theta = read_pos()
-		theta_ref = theta[0]
-		global Block_orientation
-		theta_ref = theta_ref - 0.01
-		self.rotate_object_anticlockwise(theta_ref)
-
-		# while(1):
-		# 	theta_ref = theta_ref - 0.02
-		# 	R = np.array([[cos(Block_orientation), -sin(Block_orientation), self.x], [sin(Block_orientation), cos(Block_orientation), self.y], [0, 0, 1]])
-		# 	coords = np.dot(R, np.concatenate(([X_vertices], [Y_vertices], np.ones((1,n)))))
-
-		# 	beta = 99999
-		# 	contact_right = -1
-			
-		# 	for i in range(n):
-		# 		initial_guess_t2 = np.pi/2
-		# 		solution = opt.fsolve(self.solve_t2_slide_right, initial_guess_t2, args = coords[:,i], full_output=True)
-		# 		if (solution[2]==1 and solution[0] > 0 and solution[0] < np.pi and solution[0] < beta):
-		# 			beta = solution[0]
-		# 			contact_right = i
-
-		# 	alpha = atan2(coords[contact_right][1] - coords[contact_right-1][1], coords[contact_right][0] - coords[contact_right-1][0])
-
-		# 	print alpha
-
-
-
-
-
+		self.rotate_object_anticlockwise(Motor_value)
+		while(1):
+                # global Block_orientation
+				theta=read_pos()
+				Motor_value=theta[1]-0.02
+				self.rotate_object_anticlockwise(Motor_value)
+				finger_angle=encoder_gripper_angle_conversion(theta[0],1)
+				print "Block_orientation=",self.Block_orientation
+				print "Finger_angle=", finger_angle
+				print "Diff",(abs(self.Block_orientation-finger_angle))%60
+				condition1 = (abs(self.Block_orientation-finger_angle))%60<20
+				condition2 = ((abs(self.Block_orientation-finger_angle)))%60>70
+				condition3 = (abs(self.Block_orientation+finger_angle))%60<20
+				condition4 = (abs(self.Block_orientation+finger_angle))%60>70
+				condition5 =self.Block_orientation<=180
+				condition6 = self.Block_orientation>=180
+				Right_Limit_condition = Motor_value>=0.30
+				print "c1=",condition1
+				print "c2=",condition2
+				print "c3=",condition3
+				print "c4=",condition4
+				print "c5=",condition5
+				print "c6=",condition6
+				if ((condition1 or condition2) and condition6 and Right_Limit_condition):
+					break
+				if ((condition3 or condition4) and condition5 and Right_Limit_condition):
+					break
+	
     ###################### Visual Servoing Control #######################
 	def controller(self, goal_x,goal_y, goal_theta, TOLERANCE = 0.5):
 
@@ -533,7 +618,8 @@ class visual_servoing:
 
 		# Time interval 
 		dt_1 = 0.1
-		Kp = 0.25
+		Kp = 0.5
+
 		pos = np.zeros((2,4))
 		errors = np.zeros(4)
 		self.goal_update(goal_x,goal_y,goal_theta)
@@ -541,13 +627,34 @@ class visual_servoing:
 		self.listener_object_pose()
         
 		time.sleep(1)
-		#self.ik_rightFinger()
+		# self.ik_rightFinger()
 		if (self.theta_d== 90):
+			theta = read_pos()
+			print theta[1]
+			self.slide_left_up(theta[1] - 0.2)
 			self.anticlockwise()
 		if (self.theta_d == -90):
+			theta = read_pos()
+			# self.slide_right_up(theta[0] - 0.2)
 			self.clockwise()
 		if (self.theta_d == 180):
+			print '*********************************************'
+			theta = read_pos()
+			theta_ref = theta[1]
+			for i in range(10):
+				theta_ref = theta_ref - 0.03
+				self.slide_left_up(theta_ref)
+				time.sleep(0.2)
 			self.anticlockwise()
+			
+			theta = read_pos()
+			print theta
+			theta_ref = theta[1]
+			for i in range(10):
+				theta_ref = theta_ref - 0.03
+				self.slide_left_up(theta_ref)
+				time.sleep(0.2)
+			
 			self.anticlockwise()
 		X = np.array([self.x, self.y])
 		e = self.X_d - X
@@ -560,62 +667,25 @@ class visual_servoing:
 			X = np.array([self.x, self.y])
 			e = X - self.X_d
 
-			# Check if object has reached the desired position
-			# if norm(e) < TOLERANCE:
-			# 	theta = read_pos()
-				
-			# 	if(self.finger_state == 1):
-			# 		self.slide_left_down(theta[0])
-			# 	elif(self.finger_state == 2):
-			# 		self.slide_left_up(theta[1])
-			# 	elif(self.finger_state == 3):
-			# 		self.slide_right_down(theta[1])
-			# 	else:
-			# 		self.slide_right_up(theta[0])
-				
-			# 	print 'x, y = ', self.x, self.y
-			# 	print 'reached'
-			# 	return
-				# Read the actuator angles and go to the position after it is reached
 			# Estimate the expected error if object slides on right finger 
 			self.ik_rightFinger_n()
-			# self.ik_leftFinger_n()
-			# print 'd1, d2, t1, t2', self.d1, self.d2, self.t1, self.t2
-
 			J_right = np.matrix([[-(self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left])) * sin(self.t1) + (distances[self.contact_left] + fw) * cos(self.t1)], [(self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left])) * cos(self.t1) + (distances[self.contact_left] + fw) * sin(self.t1)]], dtype='float')
-			dtheta_right = -2.5*np.linalg.pinv(J_right) *  (e.reshape(e.shape[0], 1))
+			dtheta_right = -1*np.linalg.pinv(J_right) *  (e.reshape(e.shape[0], 1))
 			X_right = np.array([(self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left])) * cos(self.t1 + dtheta_right[0, 0]) + (distances[self.contact_left] + fw) * sin(self.t1 + dtheta_right[0, 0]), (self.d1 + norm(X_vertices[self.contact_left]-x_d[self.contact_left], Y_vertices[self.contact_left]-y_d[self.contact_left])) * sin(self.t1 + dtheta_right[0, 0]) - (distances[self.contact_left]+ fw) * cos(self.t1 + dtheta_right[0, 0])])
 			e_right = norm(X_right - self.X_d)
+			
 			# Estimate the expected error if object slides on left finger
-			# self.ik_leftFinger()
 			self.ik_leftFinger_n()
 			J_left = np.matrix([[-(self.d2 + norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right])) * sin(self.t2) - (distances[self.contact_right] + fw) * cos(self.t2)], [(self.d2 +norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right])) * cos(self.t2) + (distances[self.contact_right] + fw) * sin(self.t2)]], dtype='float')
-			dtheta_left = -2.5*np.linalg.pinv(J_left) *  (e.reshape(e.shape[0], 1))
+			dtheta_left = -1*np.linalg.pinv(J_left) *  (e.reshape(e.shape[0], 1))
 			X_left = np.array([wp + (self.d2 + norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right])) * np.cos(self.t2 + dtheta_left[0,0]) - (distances[self.contact_right] + fw) * sin(self.t2 + dtheta_left[0,0]), (self.d2 + norm(X_vertices[self.contact_right] - x_d[self.contact_right], Y_vertices[self.contact_right] - y_d[self.contact_right])) * sin(self.t2 + dtheta_left[0,0]) + (distances[self.contact_right] + fw) * cos(self.t2 + dtheta_left[0,0])])
 			e_left = norm(X_left - self.X_d)
 
 
 			print 'dtheta_left', dtheta_left, 'dtheta_right', dtheta_right
 			
-			####### SET LIMITS FOR DELTA THETAS ########
-			# if(abs(dtheta_left[0,0])<0.001):
-			# 	dtheta_left[0,0] = np.sign(dtheta_left[0,0])*0.005
-
-			# if(abs(dtheta_left[0,0])>=0.01):
-			# 	dtheta_left[0,0] = np.sign(dtheta_left[0,0])*0.01
-
-			# if(abs(dtheta_right[0,0])<0.001):
-			# 	dtheta_right[0,0] = np.sign(dtheta_left[0,0])*0.005
-
-			# if(abs(dtheta_right[0,0])>0.75):
-			# 	dtheta_right[0,0] = np.sign(dtheta_left[0,0])*0.01
-			
-			 
 			# Executing the action which has the lowest estimated error
 			if e_left < e_right:
-
-				# self.t2 = self.t2 + dtheta_left[0, 0]
-				# self.translateLeft()
 
 				if dtheta_left[0, 0] > 0:
 					if self.finger_state != 1:
@@ -623,6 +693,7 @@ class visual_servoing:
 						theta_ref = theta[0]
 					theta_ref = theta_ref - Kp*dt_1*abs(dtheta_left[0,0])
 					self.slide_left_down(theta_ref)
+
 					# theta_ref = theta_ref - 0.005
 					# self.slide_left_down(theta_ref)
 					# print 'action = slide left down, theta_ref = ', theta_ref
@@ -633,14 +704,15 @@ class visual_servoing:
 					# self.slide_left_down(angle_conversion(self.t1,0))
 					# self.action = 6
 					# self.pub.publish(self.action)
-                    
-                   
+
 				else:
+
 					if self.finger_state != 2:
 						theta = read_pos()
 						theta_ref = theta[1]
 					theta_ref = theta_ref - Kp*dt_1*abs(dtheta_left[0,0])
 					self.slide_left_up(theta_ref)
+
 					# theta_ref = theta_ref - 0.005
 					# self.slide_left_up(theta_ref)
 					# print 'action = slide left up, theta_ref = ', theta_ref
@@ -653,15 +725,13 @@ class visual_servoing:
                     
 			else: 
 
-				# self.t1 = self.t1 + dtheta_right[0, 0]
-				# self.translateRight()     
-
 				if dtheta_right[0, 0] < 0:
 					if self.finger_state != 3:
 						theta = read_pos()
 						theta_ref = theta[1]
 					theta_ref = theta_ref - Kp*dt_1*abs(dtheta_right[0,0])
 					self.slide_right_down(theta_ref)
+
 					# theta_ref = theta_ref - 0.005
 					# self.slide_right_down(theta_ref)
 					# print 'action = slide right down, theta_ref = ', theta_ref
@@ -678,6 +748,8 @@ class visual_servoing:
 						theta_ref = theta[0]    
 					theta_ref = theta_ref - Kp*dt_1*abs(dtheta_right[0,0])
 					self.slide_right_up(theta_ref)
+
+
 					# theta_ref = theta_ref - 0.005
 					# self.slide_right_up(theta_ref)
 					# print 'action = slide right up, theta_ref = ', theta_ref
@@ -687,8 +759,7 @@ class visual_servoing:
 					# self.slide_right_up(angle_conversion(self.t1,0))    
 					# self.action = 9
 					# self.pub.publish(self.action)
-                    
-                   
+
 			X = np.array([self.x, self.y])
 			e = X - self.X_d
 			# print 'total time', time.time() - start_time_action
@@ -699,7 +770,7 @@ def Visual_Servoing(req):
 	print '***************'
 	v = visual_servoing()
 	if req.goal_theta == 0:
-		v.controller(req.goal_x,req.goal_y,req.goal_theta,req.Tol)
+		v.controller(req.goal_x, req.goal_y, req.goal_theta, req.Tol)
 
 	if req.goal_theta == 180:
 		# Find Cartesian coordinates of the extreme position 
@@ -708,10 +779,10 @@ def Visual_Servoing(req):
 		x_square = wp + (d1 + w0 / 2.) * np.cos(t1) - (w0 / 2. + fw) * np.sin(t1)
 		y_square = (d1 + w0 / 2.) * np.sin(t1) + (w0 / 2. + fw) * np.cos(t1)
 
-		v.controller(x_square,y_square,0, 1.5)
-		v.controller(x_square,y_square, 90, 200)
-		v.controller(x_square,y_square,0, 1.5)
-		v.controller(req.goal_x,req.goal_y,90,req.Tol)
+		# v.controller(x_square,y_square,0, 1.5)
+		# v.controller(x_square,y_square, 90, 200)
+		# v.controller(x_square,y_square,0, 1.5)
+		v.controller(req.goal_x, req.goal_y, req.goal_theta , req.Tol)
 
 	if req.goal_theta == 90:
 		# Find Cartesian coordinates of the extreme position
@@ -721,8 +792,8 @@ def Visual_Servoing(req):
 		y_square = (d1 + w0 / 2.) * np.sin(t1) + (w0 / 2. + fw) * np.cos(t1)
 
 
-		v.controller(x_square,y_square,0, 1.5)
-		v.controller(req.goal_x,req.goal_y,req.goal_theta,req.Tol)
+		# v.controller(x_square,y_square,90, 3)
+		v.controller(req.goal_x, req.goal_y, req.goal_theta, req.Tol)
 
 	if req.goal_theta == -90:
 		# Find Cartesian coordinates of the extreme position
@@ -731,8 +802,8 @@ def Visual_Servoing(req):
 		x_square = (d2 + w0 / 2.) * np.cos(np.float64(t2)) + (fw + w0 / 2.) * np.sin(np.float64(t2))
 		y_square = (d2 + w0 / 2.) * np.sin(np.float64(t2)) - (fw + w0 / 2.) * np.cos(np.float64(t2))
 
-		v.controller(x_square,y_square,0, 1.5)
-		v.controller(req.goal_x,req.goal_y,req.goal_theta,req.Tol)
+		# v.controller(x_square,y_square,0, 1.5)
+		v.controller(req.goal_x, req.goal_y, req.goal_theta, req.Tol)
 	return 1
 
 
